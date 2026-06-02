@@ -1,0 +1,80 @@
+# =====================================================================
+#  SECRETOS Y CREDENCIALES  —  NUNCA se suben al repositorio
+# =====================================================================
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.p12
+*-key.json
+*credentials*.json
+*service-account*.json
+gcloud-key*.json
+application_default_credentials.json
+
+# =====================================================================
+#  TERRAFORM
+# =====================================================================
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Variables: contienen valores sensibles -> fuera del repo.
+# Versiona en su lugar un "terraform.tfvars.example" SIN valores reales.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# OJO: .terraform.lock.hcl SÍ debe versionarse (fija versiones de
+# providers). Por eso NO está en este .gitignore.
+
+# =====================================================================
+#  PYTHON
+# =====================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# =====================================================================
+#  DATOS  (evita subir datasets pesados o sensibles)
+# =====================================================================
+data/
+*.csv
+*.parquet
+# Si quieres versionar una muestra pequeña, ponla en sample_data/ y
+# descomenta la siguiente linea:
+# !sample_data/
+
+# =====================================================================
+#  SISTEMA OPERATIVO / EDITOR
+# =====================================================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

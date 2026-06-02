@@ -1,0 +1,15 @@
+# Copia este fichero a "backend.tf" y rellena el nombre del bucket.
+# El estado de Terraform JAMAS se versiona: vive en este bucket de GCS.
+#
+# Antes, crea el bucket una sola vez (con versionado y acceso uniforme):
+#
+#   gsutil mb -l europe-southwest1 gs://NOMBRE-DEL-BUCKET-tfstate
+#   gsutil versioning set on gs://NOMBRE-DEL-BUCKET-tfstate
+#   gsutil ubla set on gs://NOMBRE-DEL-BUCKET-tfstate
+
+terraform {
+  backend "gcs" {
+    bucket = "NOMBRE-DEL-BUCKET-tfstate"
+    prefix = "tfm/state"
+  }
+}
