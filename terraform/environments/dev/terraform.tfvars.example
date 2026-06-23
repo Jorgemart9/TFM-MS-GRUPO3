@@ -1,0 +1,5 @@
+# Copia este fichero a "terraform.tfvars" y rellena los valores.
+# terraform.tfvars NO se versiona (ver .gitignore).
+project         = "tu-proyecto-gcp"   # p.ej. tfm-ms-3
+region          = "europe-southwest1" # region simple (mas barata que multi-region)
+raw_bucket_name = "tu-proyecto-raw"   # nombre global y unico, p.ej. tfm-ms-3-raw
