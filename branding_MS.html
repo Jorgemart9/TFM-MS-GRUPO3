@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Solutions | Branding</title>
+    <style>
+        /* Paleta de colores corporativos de Management Solutions */
+        :root {
+            --ms-navy: #002b49; /* Azul marino oscuro del fondo */
+            --ms-gold: #c49a00; /* Dorado/Mostaza de "Management" */
+            --ms-white: #ffffff;
+            --text-dark: #333333;
+            --bg-light: #f4f6f8;
+        }
+
+        body {
+            margin: 0;
+            /* Tipografía limpia y corporativa */
+            font-family: 'Arial', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* Tarjeta principal de presentación */
+        .brand-container {
+            width: 100%;
+            max-width: 650px;
+            background-color: var(--ms-white);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 43, 73, 0.1);
+            overflow: hidden;
+        }
+
+        /* Cabecera corporativa que imita el logo */
+        .corporate-header {
+            background-color: var(--ms-navy);
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 4px solid var(--ms-gold);
+        }
+
+        /* Recreación tipográfica del logo */
+        .logo-text {
+            font-size: 2.2rem;
+            font-weight: bold;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .logo-ms {
+            color: var(--ms-white);
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+            margin-right: 5px;
+        }
+
+        /* Representación CSS del círculo dorado del logo */
+        .logo-graphic {
+            width: 24px;
+            height: 24px;
+            border: 4px solid var(--ms-gold);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            position: relative;
+        }
+
+        .logo-graphic::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -5px;
+            width: 8px;
+            height: 8px;
+            background-color: var(--ms-white);
+            border-radius: 50%;
+        }
+
+        .logo-management {
+            color: var(--ms-gold);
+            font-weight: normal;
+        }
+
+        .logo-solutions {
+            color: var(--ms-white);
+        }
+
+        .tagline {
+            color: var(--ms-white);
+            font-size: 1.1rem;
+            font-style: italic;
+            font-weight: 300;
+            text-align: right;
+            padding-right: 10%;
+            margin-top: 5px;
+        }
+
+        /* Sección de información de la marca */
+        .brand-info {
+            padding: 40px 30px;
+            color: var(--text-dark);
+        }
+
+        .brand-info h2 {
+            margin-top: 0;
+            color: var(--ms-navy);
+            font-size: 1.4rem;
+        }
+
+        .brand-info p {
+            line-height: 1.6;
+            margin-bottom: 25px;
+            font-size: 1rem;
+        }
+
+        /* Muestras de color (Color Swatches) */
+        .color-palette {
+            display: flex;
+            gap: 15px;
+        }
+
+        .color-swatch {
+            flex: 1;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .color-box {
+            height: 60px;
+            width: 100%;
+        }
+
+        .color-navy { background-color: var(--ms-navy); }
+        .color-gold { background-color: var(--ms-gold); }
+        .color-white { background-color: var(--ms-white); border: 1px solid #eee; }
+
+        .color-label {
+            padding: 10px;
+            background: #fff;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-dark);
+            border-top: 1px solid #eee;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="brand-container">
+        <!-- Cabecera imitando el diseño de la imagen proporcionada -->
+        <div class="corporate-header">
+            <div class="logo-text">
+                <span class="logo-ms">MS</span>
+                <span class="logo-graphic"></span>
+                <span class="logo-management">Management</span><span class="logo-solutions">Solutions</span>
+            </div>
+            <div class="tagline">Making things happen</div>
+        </div>
+
+        <!-- Información de branding y paleta de colores -->
+        <div class="brand-info">
+            <h2>Identidad Corporativa</h2>
+            <p>El diseño visual de Management Solutions proyecta solidez, enfoque analítico y alcance global. La combinación del azul marino oscuro con el dorado transmite un equilibrio entre la formalidad de la consultoría tradicional y el dinamismo de la innovación ("Making things happen").</p>
+            
+            <div class="color-palette">
+                <div class="color-swatch">
+                    <div class="color-box color-navy"></div>
+                    <div class="color-label">Corporate Navy<br>#002B49</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box color-gold"></div>
+                    <div class="color-label">Accent Gold<br>#C49A00</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box color-white"></div>
+                    <div class="color-label">Pure White<br>#FFFFFF</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
