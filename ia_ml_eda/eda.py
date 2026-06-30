@@ -98,6 +98,69 @@ def save_file(content_or_df, dest_path, is_csv=False):
                 json.dump(content_or_df, f, indent=4)
         print("[*] Escritura local completada con éxito.")
 
+def preprocess_and_feature_engineering(df_in):
+    df_out = df_in.copy()
+    
+    # 1. Limpieza de variables de porcentaje
+    features_porcentaje = ['tipo_interes', 'porcentaje_uso_credito_revolving']
+    for col in features_porcentaje:
+        if col in df_out.columns:
+            df_out[col] = df_out[col].astype(str).str.replace('%', '').str.strip()
+            df_out[col] = pd.to_numeric(df_out[col], errors='coerce')
+            
+    # 2. Plazo del préstamo en meses
+    if 'plazo_prestamo' in df_out.columns:
+        df_out['plazo_meses'] = df_out['plazo_prestamo'].astype(str).str.extract(r'(\d+)').astype(float).fillna(36.0)
+    else:
+        df_out['plazo_meses'] = 36.0
+        
+    # 3. Mapeo ordinal de antigüedad laboral
+    antiguedad_map = {
+        '< 1 year': 0.5,
+        '1 year': 1.0,
+        '2 years': 2.0,
+        '3 years': 3.0,
+        '4 years': 4.0,
+        '5 years': 5.0,
+        '6 years': 6.0,
+        '7 years': 7.0,
+        '8 years': 8.0,
+        '9 years': 9.0,
+        '10+ years': 10.0
+    }
+    if 'antiguedad_laboral' in df_out.columns:
+        df_out['antiguedad_laboral_num'] = df_out['antiguedad_laboral'].map(antiguedad_map).fillna(0.0)
+    else:
+        df_out['antiguedad_laboral_num'] = 0.0
+        
+    # 4. Mapeo ordinal de grado de riesgo
+    grado_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7}
+    if 'grado_riesgo' in df_out.columns:
+        df_out['grado_riesgo_num'] = df_out['grado_riesgo'].map(grado_map).fillna(4.0)
+    else:
+        df_out['grado_riesgo_num'] = 4.0
+        
+    # 5. Ingeniería de características
+    imp = df_out['importe_solicitado'].fillna(0.0)
+    rate = df_out['tipo_interes'].fillna(12.0)
+    plazo = df_out['plazo_meses']
+    
+    df_out['cuota_mensual_estimada'] = (imp * (1.0 + (rate / 100.0))) / plazo
+    
+    inc = df_out['ingresos_anuales'].fillna(1.0)
+    df_out['ratio_carga_financiera'] = (df_out['cuota_mensual_estimada'] * 12.0) / (inc + 1.0)
+    df_out['ingreso_residual_anual'] = inc - (df_out['cuota_mensual_estimada'] * 12.0)
+    
+    revol = df_out['porcentaje_uso_credito_revolving'].fillna(0.0)
+    inq = df_out['consultas_credito_ultimos_6_meses'].fillna(0.0)
+    df_out['alerta_sobreendeudamiento'] = (revol / 100.0) * inq
+    
+    # Log transformations
+    df_out['ingresos_anuales_log'] = np.log1p(df_out['ingresos_anuales'].fillna(0.0))
+    df_out['importe_solicitado_log'] = np.log1p(df_out['importe_solicitado'].fillna(0.0))
+    
+    return df_out
+
 # -------------------------------------------------------------------
 # EJECUCIÓN DEL PIPELINE DE LIMPIEZA
 # -------------------------------------------------------------------
@@ -109,19 +172,17 @@ target_col = 'estado_prestamo'
 clase_0 = ['Pagado completamente']
 clase_1 = ['Incobrable', 'Default', 'Retraso de 31 a 120 días']
 
-# 1. Filtrar registros maduros y binarizar target al 100% de los datos
+# 1. Filtrar registros maduros y binarizar target
 print("[*] Aplicando filtros de madurez crediticia y binarización...")
 df_clean = df[df[target_col].isin(clase_0 + clase_1)].copy()
 df_clean['target'] = np.where(df_clean[target_col].isin(clase_1), 1, 0)
 
-# 2. Limpieza de columnas de porcentaje al 100% de los datos
-features_porcentaje = ['tipo_interes', 'porcentaje_uso_credito_revolving']
-for col in features_porcentaje:
-    if col in df_clean.columns:
-        df_clean[col] = df_clean[col].astype(str).str.replace('%', '').str.strip()
-        df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
+# 2. Aplicar transformaciones e ingeniería de características
+print("[*] Generando ingeniería de características y normalizaciones...")
+df = preprocess_and_feature_engineering(df)
+df_clean = preprocess_and_feature_engineering(df_clean)
 
-# 3. Guardar dataset limpio (debe ir a GCS en GCP)
+# 3. Guardar dataset limpio
 save_file(df_clean, output_clean_path, is_csv=True)
 
 # -------------------------------------------------------------------
@@ -165,7 +226,7 @@ target_summary = [
     {"label": "Impago/Default (Clase 1)", "count": int(target_dist.get(1, 0)), "percentage": round(float(target_dist.get(1, 0) / total_rows_filtered) * 100, 2) if total_rows_filtered > 0 else 0}
 ]
 
-# Variables numéricas descriptivas
+# Variables numéricas descriptivas (incluyendo las nuevas características)
 features_numericas = [
     'importe_solicitado', 
     'ingresos_anuales', 
@@ -173,13 +234,19 @@ features_numericas = [
     'puntuacion_crediticia_media',
     'bancarrotas_publicas',
     'consultas_credito_ultimos_6_meses',
-    'impago_ultimos_2_anios'
+    'impago_ultimos_2_anios',
+    'tipo_interes',
+    'porcentaje_uso_credito_revolving',
+    'plazo_meses',
+    'antiguedad_laboral_num',
+    'grado_riesgo_num',
+    'cuota_mensual_estimada',
+    'ratio_carga_financiera',
+    'ingreso_residual_anual',
+    'alerta_sobreendeudamiento',
+    'ingresos_anuales_log',
+    'importe_solicitado_log'
 ]
-
-# Incorporar las numéricas de porcentaje ya limpias
-for col in features_porcentaje:
-    if col in df_clean_sample.columns and col not in features_numericas:
-        features_numericas.append(col)
 
 descriptive_stats = {}
 for col in features_numericas:

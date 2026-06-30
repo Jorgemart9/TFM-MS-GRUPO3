@@ -25,6 +25,69 @@ try:
 except ImportError:
     print("[!] google-cloud-aiplatform o google-cloud-storage no están instalados. Operando en modo Local Fallback.")
 
+def preprocess_and_feature_engineering(df_in):
+    df_out = df_in.copy()
+    
+    # 1. Limpieza de variables de porcentaje
+    features_porcentaje = ['tipo_interes', 'porcentaje_uso_credito_revolving']
+    for col in features_porcentaje:
+        if col in df_out.columns:
+            df_out[col] = df_out[col].astype(str).str.replace('%', '').str.strip()
+            df_out[col] = pd.to_numeric(df_out[col], errors='coerce')
+            
+    # 2. Plazo del préstamo en meses
+    if 'plazo_prestamo' in df_out.columns:
+        df_out['plazo_meses'] = df_out['plazo_prestamo'].astype(str).str.extract(r'(\d+)').astype(float).fillna(36.0)
+    else:
+        df_out['plazo_meses'] = 36.0
+        
+    # 3. Mapeo ordinal de antigüedad laboral
+    antiguedad_map = {
+        '< 1 year': 0.5,
+        '1 year': 1.0,
+        '2 years': 2.0,
+        '3 years': 3.0,
+        '4 years': 4.0,
+        '5 years': 5.0,
+        '6 years': 6.0,
+        '7 years': 7.0,
+        '8 years': 8.0,
+        '9 years': 9.0,
+        '10+ years': 10.0
+    }
+    if 'antiguedad_laboral' in df_out.columns:
+        df_out['antiguedad_laboral_num'] = df_out['antiguedad_laboral'].map(antiguedad_map).fillna(0.0)
+    else:
+        df_out['antiguedad_laboral_num'] = 0.0
+        
+    # 4. Mapeo ordinal de grado de riesgo
+    grado_map = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7}
+    if 'grado_riesgo' in df_out.columns:
+        df_out['grado_riesgo_num'] = df_out['grado_riesgo'].map(grado_map).fillna(4.0)
+    else:
+        df_out['grado_riesgo_num'] = 4.0
+        
+    # 5. Ingeniería de características
+    imp = df_out['importe_solicitado'].fillna(0.0)
+    rate = df_out['tipo_interes'].fillna(12.0)
+    plazo = df_out['plazo_meses']
+    
+    df_out['cuota_mensual_estimada'] = (imp * (1.0 + (rate / 100.0))) / plazo
+    
+    inc = df_out['ingresos_anuales'].fillna(1.0)
+    df_out['ratio_carga_financiera'] = (df_out['cuota_mensual_estimada'] * 12.0) / (inc + 1.0)
+    df_out['ingreso_residual_anual'] = inc - (df_out['cuota_mensual_estimada'] * 12.0)
+    
+    revol = df_out['porcentaje_uso_credito_revolving'].fillna(0.0)
+    inq = df_out['consultas_credito_ultimos_6_meses'].fillna(0.0)
+    df_out['alerta_sobreendeudamiento'] = (revol / 100.0) * inq
+    
+    # Log transformations
+    df_out['ingresos_anuales_log'] = np.log1p(df_out['ingresos_anuales'].fillna(0.0))
+    df_out['importe_solicitado_log'] = np.log1p(df_out['importe_solicitado'].fillna(0.0))
+    
+    return df_out
+
 # -------------------------------------------------------------------
 # 1. PARSEADO DE ARGUMENTOS
 # -------------------------------------------------------------------
@@ -104,7 +167,7 @@ df = load_dataset(args.data_source, args.data_path, args.sample_fraction)
 # -------------------------------------------------------------------
 # 2. PREPROCESAMIENTO Y LIMPIEZA
 # -------------------------------------------------------------------
-print("[*] Limpiando datos...")
+print("[*] Limpiando datos e ingeniería de características...")
 
 # Filtrar target
 target_col = 'estado_prestamo'
@@ -115,29 +178,32 @@ df = df[df[target_col].isin(clase_0 + clase_1)].copy()
 df['target'] = np.where(df[target_col].isin(clase_1), 1, 0)
 y = df['target']
 
+# Aplicar ingeniería de características y preprocesamiento avanzado
+df = preprocess_and_feature_engineering(df)
+
 features_numericas = [
-    'importe_solicitado', 
-    'ingresos_anuales', 
+    'importe_solicitado_log', 
+    'ingresos_anuales_log', 
     'ratio_prestamo_ingresos',
     'puntuacion_crediticia_media',
     'bancarrotas_publicas',
     'consultas_credito_ultimos_6_meses',
-    'impago_ultimos_2_anios'
-]
-features_categoricas = [
-    'finalidad_prestamo', 
-    'antiguedad_laboral', 
-    'grado_riesgo', 
-    'tipo_vivienda', 
-    'plazo_prestamo'
+    'impago_ultimos_2_anios',
+    'tipo_interes',
+    'porcentaje_uso_credito_revolving',
+    'plazo_meses',
+    'antiguedad_laboral_num',
+    'grado_riesgo_num',
+    'cuota_mensual_estimada',
+    'ratio_carga_financiera',
+    'ingreso_residual_anual',
+    'alerta_sobreendeudamiento'
 ]
 
-features_porcentaje = ['tipo_interes', 'porcentaje_uso_credito_revolving']
-for col in features_porcentaje:
-    if col in df.columns:
-        df[col] = df[col].astype(str).str.replace('%', '').str.strip()
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-        features_numericas.append(col)
+features_categoricas = [
+    'finalidad_prestamo', 
+    'tipo_vivienda'
+]
 
 cols_to_use = [c for c in features_numericas + features_categoricas if c in df.columns]
 X = df[cols_to_use]
@@ -159,7 +225,7 @@ print(f"[*] Ratio de desbalanceo calculado (Negativos/Positivos): {spw:.2f}")
 # 3. TRANSFORMADORES
 # -------------------------------------------------------------------
 numeric_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='median')),
+    ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
     ('scaler', StandardScaler())
 ])
 
@@ -179,30 +245,44 @@ preprocessor = ColumnTransformer(
 # -------------------------------------------------------------------
 models = {
     "CatBoost": {
-        "model": CatBoostClassifier(verbose=0, random_state=42),
+        "model": CatBoostClassifier(verbose=0, random_state=42, bootstrap_type='Bernoulli'),
         "params": {
-            "classifier__iterations": [50, 100, 200],
-            "classifier__depth": [4, 6, 8],
-            "classifier__learning_rate": [0.01, 0.05, 0.1],
-            "classifier__scale_pos_weight": [1.0, 2.0, 3.0, spw, spw * 1.5]
+            "classifier__iterations": [300, 500, 800],
+            "classifier__depth": [6, 8, 10],
+            "classifier__learning_rate": [0.01, 0.03, 0.05, 0.1],
+            "classifier__l2_leaf_reg": [1, 3, 5, 7],
+            "classifier__subsample": [0.7, 0.8, 0.9],
+            "classifier__scale_pos_weight": [spw * 0.75, spw, spw * 1.25]
         }
     },
     "LightGBM": {
-        "model": LGBMClassifier(random_state=42),
+        "model": LGBMClassifier(random_state=42, verbose=-1),
         "params": {
-            "classifier__n_estimators": [50, 100, 200],
-            "classifier__max_depth": [3, 5, 7],
-            "classifier__learning_rate": [0.01, 0.05, 0.1],
-            "classifier__scale_pos_weight": [1.0, 2.0, 3.0, spw, spw * 1.5]
+            "classifier__n_estimators": [300, 500, 800],
+            "classifier__max_depth": [7, 9, 12, -1],
+            "classifier__learning_rate": [0.01, 0.03, 0.05, 0.1],
+            "classifier__num_leaves": [31, 63, 127, 255],
+            "classifier__min_child_samples": [20, 50, 100],
+            "classifier__subsample": [0.7, 0.8, 0.9],
+            "classifier__colsample_bytree": [0.7, 0.8, 0.9],
+            "classifier__reg_alpha": [0, 0.1, 1.0],
+            "classifier__reg_lambda": [0, 1.0, 5.0],
+            "classifier__scale_pos_weight": [spw * 0.75, spw, spw * 1.25]
         }
     },
     "XGBoost": {
         "model": XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42),
         "params": {
-            "classifier__n_estimators": [50, 100, 200],
-            "classifier__max_depth": [3, 5, 7],
-            "classifier__learning_rate": [0.01, 0.05, 0.1],
-            "classifier__scale_pos_weight": [1.0, 2.0, 3.0, spw, spw * 1.5]
+            "classifier__n_estimators": [300, 500, 800],
+            "classifier__max_depth": [6, 8, 10, 12],
+            "classifier__learning_rate": [0.01, 0.03, 0.05, 0.1],
+            "classifier__min_child_weight": [1, 5, 10],
+            "classifier__subsample": [0.7, 0.8, 0.9],
+            "classifier__colsample_bytree": [0.7, 0.8, 0.9],
+            "classifier__reg_alpha": [0, 0.1, 1.0],
+            "classifier__reg_lambda": [1.0, 5.0, 10.0],
+            "classifier__gamma": [0, 0.1, 0.5],
+            "classifier__scale_pos_weight": [spw * 0.75, spw, spw * 1.25]
         }
     }
 }
@@ -227,11 +307,15 @@ for model_name, config in models.items():
     
     # Grid/Randomized Search para este modelo (optimizado para F1-Score)
     # Se ajusta sobre X_train_base/y_train_base para separar la calibración
+    # Optimización dinámica del número de iteraciones y folds en datasets grandes
+    n_iter_search = 20
+    cv_search = 3
+    
     search = RandomizedSearchCV(
         pipeline,
         param_distributions=config["params"],
-        n_iter=10, 
-        cv=3,
+        n_iter=n_iter_search, 
+        cv=cv_search,
         scoring='f1',
         n_jobs=-1,
         random_state=42
@@ -260,8 +344,25 @@ for model_name, config in models.items():
         ('classifier', calibrated_classifier)
     ])
     
-    y_pred = calibrated_pipeline.predict(X_test)
+    # Predecir probabilidades en calibración para buscar el umbral de decisión óptimo
+    y_calib_prob = calibrated_classifier.predict_proba(X_calib_trans)[:, 1]
+    
+    # Búsqueda del umbral en el rango [0.05, 0.95] que maximiza el F1-Score sobre el conjunto de calibración
+    best_threshold = 0.5
+    best_f1_calib = 0.0
+    for thresh in np.linspace(0.05, 0.95, 91):
+        preds_calib = (y_calib_prob >= thresh).astype(int)
+        score_f1 = f1_score(y_train_calib, preds_calib, zero_division=0)
+        if score_f1 > best_f1_calib:
+            best_f1_calib = score_f1
+            best_threshold = thresh
+
+    # Aplicamos el umbral óptimo sobre el conjunto de test independiente
     y_prob = calibrated_pipeline.predict_proba(X_test)[:, 1]
+    y_pred = (y_prob >= best_threshold).astype(int)
+    
+    # Almacenamos el umbral óptimo dentro del propio objeto del pipeline serializado
+    calibrated_pipeline.decision_threshold = float(best_threshold)
     
     metrics = {
         "accuracy": float(accuracy_score(y_test, y_pred)),
@@ -272,11 +373,13 @@ for model_name, config in models.items():
     }
     
     print(f"[{model_name}] Mejores parámetros: {best_params}")
-    print(f"[{model_name}] Métricas Calibradas en Test: ROC-AUC = {metrics['roc_auc']:.4f}, Recall = {metrics['recall']:.4f}, F1 = {metrics['f1']:.4f}")
+    print(f"[{model_name}] Umbral óptimo de F1 (Calibración): {best_threshold:.2f} (F1 Calib = {best_f1_calib:.4f})")
+    print(f"[{model_name}] Métricas Calibradas en Test (con Umbral {best_threshold:.2f}): ROC-AUC = {metrics['roc_auc']:.4f}, Recall = {metrics['recall']:.4f}, F1 = {metrics['f1']:.4f}")
     
     # Guardar localmente para fallback
     # Convertimos los parámetros a string para evitar problemas de tipos complejos
     cleaned_params = {k.replace("classifier__", ""): str(v) for k, v in best_params.items()}
+    cleaned_params["decision_threshold"] = f"{best_threshold:.2f}"
     local_runs_summary.append({
         "name": model_name,
         "params": cleaned_params,
