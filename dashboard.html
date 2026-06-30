@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLOps Governance Dashboard | Management Solutions</title>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Paleta de colores institucionales de Management Solutions */
+        :root {
+            --ms-navy: #002b49;
+            /* Fondo de cabecera corporativo */
+            --ms-gold: #c49a00;
+            /* Detalle dorado de marca */
+            --ms-white: #ffffff;
+            /* Fondo de tarjetas y tablas */
+            --text-primary: #1f2937;
+            /* Texto principal */
+            --text-muted: #4b5563;
+            /* Texto secundario */
+            --bg-light: #f3f4f6;
+            /* Fondo de página gris claro */
+            --border-color: #e5e7eb;
+            /* Bordes limpios de un pixel */
+
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 4px 6px -1px rgba(0, 43, 73, 0.05), 0 2px 4px -1px rgba(0, 43, 73, 0.03);
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Navbar Corporativo */
+        .navbar {
+            background-color: var(--ms-navy);
+            border-bottom: 4px solid var(--ms-gold);
+            padding: 0 32px;
+            height: 75px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 43, 73, 0.1);
+        }
+
+        /* Logotipo corporativo idéntico al manual de marca */
+        .brand-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo-text {
+            font-size: 1.6rem;
+            font-weight: bold;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            line-height: 1;
+        }
+
+        .logo-ms {
+            color: var(--ms-white);
+            font-size: 1.85rem;
+            letter-spacing: -1px;
+        }
+
+        .logo-graphic {
+            width: 16px;
+            height: 16px;
+            border: 3.5px solid var(--ms-gold);
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            margin-right: 2px;
+        }
+
+        .logo-graphic::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -3px;
+            width: 5px;
+            height: 5px;
+            background-color: var(--ms-white);
+            border-radius: 50%;
+        }
+
+        .logo-management {
+            color: var(--ms-gold);
+            font-weight: normal;
+        }
+
+        .logo-solutions {
+            color: var(--ms-white);
+        }
+
+        .tagline {
+            color: var(--ms-white);
+            font-size: 0.8rem;
+            font-style: italic;
+            font-weight: 300;
+            text-align: right;
+            margin-top: 3px;
+            padding-right: 2px;
+            opacity: 0.85;
+        }
+
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-badge {
+            background-color: rgba(16, 185, 129, 0.12);
+            color: #059669;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background-color: currentColor;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Container principal */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 32px;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        /* Tabs de navegación */
+        .tabs-navigation {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--ms-navy);
+            padding: 10px 18px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            outline: none;
+        }
+
+        .tab-btn:hover {
+            background-color: rgba(0, 43, 73, 0.03);
+        }
+
+        .tab-btn.active {
+            color: var(--ms-white);
+            background-color: var(--ms-navy);
+            border-color: var(--ms-navy);
+        }
+
+        /* Contenido de pestañas */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Encabezados de Sección */
+        .section-header {
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--ms-navy);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 4px solid var(--ms-gold);
+            padding-left: 10px;
+        }
+
+        /* Tarjetas Metodología / Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--ms-white);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: transparent;
+        }
+
+        .metric-card.card-business::before {
+            background-color: var(--info);
+        }
+
+        .metric-card.card-pipeline::before {
+            background-color: var(--warning);
+        }
+
+        .metric-card.card-model::before {
+            background-color: var(--ms-navy);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(0, 43, 73, 0.12);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-icon {
+            font-size: 1.1rem;
+            color: var(--ms-navy);
+            opacity: 0.75;
+        }
+
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--ms-navy);
+            margin-bottom: 4px;
+        }
+
+        .metric-description {
+            font-size: 0.75rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        /* Estructuras en Columnas */
+        .grid-two-cols {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .chart-panel {
+            background: var(--ms-white);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .panel-title {
+            font-weight: 700;
+            color: var(--ms-navy);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 290px;
+            width: 100%;
+        }
+
+        /* Estimador de Pérdidas de Cartera */
+        .simulator-card {
+            background: #f8fafc;
+            border-left: 4px solid var(--ms-gold);
+        }
+
+        .simulator-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 28px;
+        }
+
+        .simulator-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--ms-navy);
+        }
+
+        .slider-header span.val {
+            color: var(--ms-gold);
+            font-weight: 700;
+        }
+
+        .custom-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 5px;
+            border-radius: 2px;
+            background: #e2e8f0;
+            outline: none;
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--ms-gold);
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+            transition: var(--transition);
+        }
+
+        .custom-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        .simulator-results {
+            background: var(--ms-white);
+            border-radius: 4px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sim-result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sim-result-label {
+            font-size: 0.8rem;
+            color: #4b5563;
+            font-weight: 600;
+        }
+
+        .sim-result-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--ms-navy);
+        }
+
+        .sim-result-value.danger {
+            color: var(--danger);
+        }
+
+        .sim-result-value.success {
+            color: #8a6d00;
+        }
+
+        .sim-progress-container {
+            width: 100%;
+            background: #f1f5f9;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .sim-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--ms-gold), var(--ms-navy));
+            width: 0%;
+            transition: width 0.3s ease-out;
+        }
+
+        /* Tabla de Comparativa */
+        .comp-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .comp-table th,
+        .comp-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comp-table th {
+            font-weight: 700;
+            color: var(--ms-navy);
+            background-color: #f8fafc;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .comp-table tbody tr {
+            transition: var(--transition);
+        }
+
+        .comp-table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .comp-table tbody tr.champion-row {
+            background-color: rgba(0, 43, 73, 0.03);
+            border-left: 4px solid var(--ms-navy);
+        }
+
+        .champion-badge-cell {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background-color: rgba(0, 43, 73, 0.06);
+            color: var(--ms-navy);
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border: 1px solid rgba(0, 43, 73, 0.15);
+        }
+
+        /* MLOps Governance Registry / Audit panel (sustituye consola) */
+        .governance-panel {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .gov-metadata-card {
+            background: var(--ms-white);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .gov-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--ms-navy);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .gov-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .gov-meta-table td {
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.8rem;
+        }
+
+        .gov-meta-table td.label {
+            color: #4b5563;
+            font-weight: 600;
+            width: 38%;
+        }
+
+        .gov-meta-table td.value {
+            color: var(--text-primary);
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        .badge-verificado {
+            background-color: #d1fae5;
+            color: #065f46;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        /* Run history audit table */
+        .gov-audit-card {
+            background: var(--ms-white);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .audit-table th,
+        .audit-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            text-align: left;
+        }
+
+        .audit-table th {
+            font-weight: 700;
+            color: var(--ms-navy);
+            background-color: #f9fafb;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+        }
+
+        .audit-status {
+            font-weight: 700;
+            font-size: 0.7rem;
+            border-radius: 3px;
+            padding: 2px 6px;
+            display: inline-block;
+        }
+
+        .audit-status.aprobado {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .audit-status.candidato {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .audit-status.reemplazado {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        /* Insights Box */
+        .insights-box {
+            background: var(--ms-white);
+            border-radius: 4px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--ms-gold);
+            box-shadow: var(--shadow-sm);
+            margin-top: 24px;
+        }
+
+        .insights-title {
+            font-weight: 700;
+            color: var(--ms-navy);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .insights-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .insights-content ul {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .insights-content li {
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .insights-content li strong {
+            color: var(--ms-navy);
+        }
+
+        .text-gold {
+            color: var(--ms-gold) !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 1024px) {
+
+            .grid-two-cols,
+            .simulator-layout,
+            .governance-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Navbar -->
+    <nav class="navbar">
+        <div class="brand-container">
+            <div class="logo-text">
+                <span class="logo-ms">MS</span>
+                <span class="logo-graphic"></span>
+                <span class="logo-management">Management</span><span class="logo-solutions">Solutions</span>
+            </div>
+            <div class="tagline">Making things happen</div>
+        </div>
+        <div class="nav-controls">
+            <div class="status-badge">
+                Pipeline Activo
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+
+        <!-- Tabs Navigation -->
+        <div class="tabs-navigation">
+            <button class="tab-btn active" data-tab="resumen"><i class="fa-solid fa-chart-line"></i> Resumen General y Negocio</button>
+            <button class="tab-btn" data-tab="eda"><i class="fa-solid fa-magnifying-glass-chart"></i> Análisis Exploratorio (EDA)</button>
+            <button class="tab-btn" data-tab="comparativa"><i class="fa-solid fa-code-compare"></i> Comparativa de Modelos</button>
+            <button class="tab-btn" data-tab="explicabilidad"><i class="fa-solid fa-brain"></i> Explicabilidad (SHAP)</button>
+            <button class="tab-btn" data-tab="mlops"><i class="fa-solid fa-gears"></i> MLOps & Auditoría de Drift</button>
+        </div>
+
+        <!-- TAB 1: RESUMEN GENERAL Y NEGOCIO -->
+        <div id="tab-resumen" class="tab-content active">
+            <!-- KPIs del Modelo Campeón -->
+            <div class="section-header">
+                <h2 class="section-title"><i class="fa-solid fa-chart-simple text-gold"></i> KPIs del Modelo en
+                    Producción (<span id="champion-model-name-title" class="text-gold">LightGBM</span>)</h2>
+                <span style="font-size: 0.8rem; color: #6b7280;"><i class="fa-solid fa-clock"></i> Último
+                    reentrenamiento: MLflow Registry Sincronizado</span>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card card-model">
+                    <div class="metric-header">
+                        <span class="metric-label">Accuracy (Precisión Global)</span>
+                        <i class="fa-solid fa-circle-check metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="val-accuracy">0.0%</div>
+                    <span class="metric-description">Tasa de aciertos globales sobre test</span>
+                </div>
+
+                <div class="metric-card card-model">
+                    <div class="metric-header">
+                        <span class="metric-label">Precision (Precisión de Impago)</span>
+                        <i class="fa-solid fa-crosshairs metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="val-precision">0.0%</div>
+                    <span class="metric-description">Porcentaje de impagos reales detectados</span>
+                </div>
+
+                <div class="metric-card card-model">
+                    <div class="metric-header">
+                        <span class="metric-label">Recall (Tasa de Captura)</span>
+                        <i class="fa-solid fa-filter metric-icon" style="color: var(--ms-gold)"></i>
+                    </div>
+                    <div class="metric-value" id="val-recall">0.0%</div>
+                    <span class="metric-description text-gold" style="font-weight: 600;">Mitigación del riesgo de
+                        pérdidas</span>
+                </div>
+
+                <div class="metric-card card-model">
+                    <div class="metric-header">
+                        <span class="metric-label">F1-Score (Balance)</span>
+                        <i class="fa-solid fa-scale-balanced metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="val-f1">0.0%</div>
+                    <span class="metric-description">Métrica ponderada de balance de clases</span>
+                </div>
+
+                <div class="metric-card card-model">
+                    <div class="metric-header">
+                        <span class="metric-label">ROC-AUC</span>
+                        <i class="fa-solid fa-chart-area metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="val-roc-auc">0.000</div>
+                    <span class="metric-description">Poder de discriminación del modelo</span>
+                </div>
+            </div>
+
+            <!-- Calculadora de Pérdidas -->
+            <div class="section-header" style="margin-top: 12px;">
+                <h2 class="section-title"><i class="fa-solid fa-calculator"></i> Calculadora Analítica de Pérdidas de
+                    Cartera</h2>
+            </div>
+
+            <div class="chart-panel simulator-card" style="margin-bottom: 24px;">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fa-solid fa-sliders"></i> Ajuste los parámetros del portafolio
+                        para estimar el ahorro financiero</span>
+                </div>
+
+                <div class="simulator-layout">
+                    <div class="simulator-controls">
+                        <!-- Volumen de Cartera -->
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span>Volumen total de créditos en riesgo</span>
+                                <span class="val" id="val-slider-volume">€2.5M</span>
+                            </div>
+                            <input type="range" class="custom-slider" id="slider-volume" min="500000" max="10000000"
+                                step="100000" value="2500000">
+                        </div>
+
+                        <!-- Tasa de Default -->
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span>Tasa de Default Estimada (PD / Sin modelo)</span>
+                                <span class="val" id="val-slider-default">22%</span>
+                            </div>
+                            <input type="range" class="custom-slider" id="slider-default" min="5" max="50" step="1"
+                                value="22">
+                        </div>
+
+                        <!-- LGD (Severidad de Pérdida) -->
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span>LGD (Loss Given Default / Severidad)</span>
+                                <span class="val" id="val-slider-lgd">45%</span>
+                            </div>
+                            <input type="range" class="custom-slider" id="slider-lgd" min="10" max="100" step="5"
+                                value="45">
+                            <span style="font-size: 0.70rem; color: #6b7280; margin-top: -3px;"><i class="fa-solid fa-info-circle"></i> Estándar de Basilea III (créditos no garantizados senior): 45%</span>
+                        </div>
+
+                        <!-- EAD (Exposición al Default) -->
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span>EAD (Exposure at Default / Exposición)</span>
+                                <span class="val" id="val-slider-ead">100%</span>
+                            </div>
+                            <input type="range" class="custom-slider" id="slider-ead" min="50" max="100" step="5"
+                                value="100">
+                            <span style="font-size: 0.70rem; color: #6b7280; margin-top: -3px;"><i class="fa-solid fa-info-circle"></i> Porcentaje del crédito expuesto al momento del default</span>
+                        </div>
+
+                        <!-- Recall de Detección -->
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span>Recall del Modelo (Tasa de Captura)</span>
+                                <span class="val" id="val-slider-recall">64.1%</span>
+                            </div>
+                            <input type="range" class="custom-slider" id="slider-recall" min="30" max="100" step="1"
+                                value="64">
+                            <span style="font-size: 0.75rem; color: #6b7280; margin-top: -3px;"><i
+                                    class="fa-solid fa-info-circle"></i> Sincronizado por defecto al Recall real del
+                                modelo (<span id="real-recall-ref">64.12</span>%)</span>
+                        </div>
+                    </div>
+
+                    <div class="simulator-results">
+                        <div class="sim-result-item">
+                            <span class="sim-result-label"><i class="fa-solid fa-triangle-exclamation"></i> Pérdidas
+                                Esperadas sin Modelo:</span>
+                            <span class="sim-result-value danger" id="sim-loss-no-model">€0</span>
+                        </div>
+                        <div class="sim-result-item"
+                            style="border-top: 1px solid var(--border-color); padding-top: 10px;">
+                            <span class="sim-result-label" style="color: var(--ms-navy); font-weight: bold;"><i
+                                    class="fa-solid fa-shield-halved"></i> Pérdidas Evitadas (Ahorro Estimado):</span>
+                            <span class="sim-result-value success" id="sim-avoided-loss">€0</span>
+                        </div>
+                        <div class="sim-result-item"
+                            style="border-top: 1px solid var(--border-color); padding-top: 10px;">
+                            <span class="sim-result-label"><i class="fa-solid fa-ban"></i> Pérdidas Residuales (Falsos
+                                Negativos):</span>
+                            <span class="sim-result-value" style="color: var(--text-muted);"
+                                id="sim-residual-loss">€0</span>
+                        </div>
+
+                        <div style="margin-top: 6px;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #4b5563; font-weight: bold; margin-bottom: 4px;">
+                                <span>Porcentaje de Mitigación de Pérdida</span>
+                                <span id="sim-mitigation-pct">0%</span>
+                            </div>
+                            <div class="sim-progress-container">
+                                <div class="sim-progress-bar" id="sim-progress-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: COMPARATIVA DE MODELOS -->
+        <div id="tab-comparativa" class="tab-content">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fa-solid fa-code-compare"></i> Comparativa de Algoritmos Registrados
+                </h2>
+            </div>
+
+            <!-- Gráfico Comparativo -->
+            <div class="chart-panel" style="margin-bottom: 24px;">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fa-solid fa-chart-bar"></i> Evaluación de Métricas en Conjunto
+                        de Test</span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tabla Detallada -->
+            <div class="chart-panel">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fa-solid fa-table"></i> Matriz de Rendimiento Analítico</span>
+                </div>
+                <table class="comp-table">
+                    <thead>
+                        <tr>
+                            <th>Algoritmo</th>
+                            <th>F1-Score (Objetivo)</th>
+                            <th>ROC-AUC</th>
+                            <th>Accuracy</th>
+                            <th>Recall</th>
+                            <th>Estatus</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparison-table-body">
+                        <!-- Generado dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: MLOPS & DRIFT -->
+        <div id="tab-mlops" class="tab-content">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fa-solid fa-heart-pulse"></i> Telemetría de la API de Inferencia
+                </h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card card-pipeline">
+                    <div class="metric-header">
+                        <span class="metric-label">Latencia Inferencia API</span>
+                        <i class="fa-solid fa-stopwatch metric-icon" style="color: var(--warning)"></i>
+                    </div>
+                    <div class="metric-value" id="val-latency">0 ms</div>
+                    <span class="metric-description">Tiempo medio de cómputo en inferencia</span>
+                </div>
+
+                <div class="metric-card card-pipeline">
+                    <div class="metric-header">
+                        <span class="metric-label">Error Rate ( API )</span>
+                        <i class="fa-solid fa-triangle-exclamation metric-icon" style="color: var(--danger)"></i>
+                    </div>
+                    <div class="metric-value" id="val-error-rate">0.00%</div>
+                    <span class="metric-description">Tasa de fallos y excepciones HTTP</span>
+                </div>
+
+                <div class="metric-card card-pipeline">
+                    <div class="metric-header">
+                        <span class="metric-label">Carga en Producción</span>
+                        <i class="fa-solid fa-bolt metric-icon" style="color: var(--info)"></i>
+                    </div>
+                    <div class="metric-value">1,402 req/s</div>
+                    <span class="metric-description">Tráfico de inferencia batcheado</span>
+                </div>
+            </div>
+
+            <!-- Gráficos de Drift -->
+            <div class="grid-two-cols">
+                <!-- Concept Drift -->
+                <div class="chart-panel">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-chart-line"></i> Concept Drift (Evolución de
+                            Rendimiento en el Tiempo)</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="evolutionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Data Drift -->
+                <div class="chart-panel">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-chart-bar"></i> Data Drift (Índice PSI por
+                            Feature)</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="driftChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de Gobernanza y Linaje MLOps (Reemplaza consola informal) -->
+            <div class="section-header" style="margin-top: 12px;">
+                <h2 class="section-title"><i class="fa-solid fa-shield-halved"></i> MLOps Model Registry & Governance
+                    Audit</h2>
+            </div>
+
+            <div class="governance-panel">
+                <!-- Metadatos de Gobernanza -->
+                <div class="gov-metadata-card">
+                    <div class="gov-title"><i class="fa-solid fa-circle-info"></i> Metadatos de Gobernanza (Producción)
+                    </div>
+                    <table class="gov-meta-table">
+                        <tr>
+                            <td class="label">Modelo Registrado:</td>
+                            <td class="value" id="gov-model-name">Champion_LightGBM_MVP_Balanced</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Model Registry URI:</td>
+                            <td class="value">models:/Champion_LightGBM_Balanced/Production</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Backend Store:</td>
+                            <td class="value">sqlite:///mlflow.db</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Model Framework:</td>
+                            <td class="value" id="gov-framework">LightGBM (scikit-learn API)</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Estatus de Validación:</td>
+                            <td><span class="badge-verificado">APROBADO & VERIFICADO</span></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Historial de Auditoría de Ejecuciones (Run Audit History) -->
+                <div class="gov-audit-card">
+                    <div class="gov-title"><i class="fa-solid fa-history"></i> Historial de Auditoría de Ejecuciones
+                    </div>
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha y Hora</th>
+                                <th>MLflow Run ID</th>
+                                <th>Algoritmo</th>
+                                <th>Métrica F1 (Test)</th>
+                                <th>Verificación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>17/06/2026 17:07</td>
+                                <td><code style="color: var(--ms-navy)">b97a61d7...</code></td>
+                                <td style="font-weight: 600;">LightGBM_Balanced</td>
+                                <td style="font-weight: bold;">41.42%</td>
+                                <td><span class="audit-status aprobado">APROBADO</span></td>
+                            </tr>
+                            <tr>
+                                <td>17/06/2026 17:07</td>
+                                <td><code>a12b6f12...</code></td>
+                                <td>XGBoost_Balanced</td>
+                                <td>41.37%</td>
+                                <td><span class="audit-status candidato">CANDIDATO</span></td>
+                            </tr>
+                            <tr>
+                                <td>17/06/2026 17:06</td>
+                                <td><code>e98f2b34...</code></td>
+                                <td>Logistic_Regression_Balanced</td>
+                                <td>40.06%</td>
+                                <td><span class="audit-status candidato">CANDIDATO</span></td>
+                            </tr>
+                            <tr>
+                                <td>17/06/2026 15:02</td>
+                                <td><code>d45f3c11...</code></td>
+                                <td>LightGBM_Baseline</td>
+                                <td>40.53%</td>
+                                <td><span class="audit-status reemplazado">REEMPLAZADO</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: ANÁLISIS EXPLORATORIO (EDA) -->
+        <div id="tab-eda" class="tab-content">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fa-solid fa-magnifying-glass-chart"></i> Auditoría de Datos y Análisis Exploratorio (EDA)</h2>
+                <span style="font-size: 0.8rem; color: #6b7280;"><i class="fa-solid fa-database"></i> Muestra de Datos: 10% del Dataset Real</span>
+            </div>
+
+            <!-- Resumen de Dimensiones -->
+            <div class="metrics-grid">
+                <div class="metric-card card-business">
+                    <div class="metric-header">
+                        <span class="metric-label">Registros Totales Estimados</span>
+                        <i class="fa-solid fa-server metric-icon" style="color: var(--info)"></i>
+                    </div>
+                    <div class="metric-value" id="eda-raw-rows">0</div>
+                    <span class="metric-description">Volumen total de la cartera</span>
+                </div>
+                <div class="metric-card card-business">
+                    <div class="metric-header">
+                        <span class="metric-label">Registros Analizados (Muestra)</span>
+                        <i class="fa-solid fa-filter metric-icon" style="color: var(--info)"></i>
+                    </div>
+                    <div class="metric-value" id="eda-sample-rows">0</div>
+                    <span class="metric-description">Muestra representativa para el EDA</span>
+                </div>
+                <div class="metric-card card-business">
+                    <div class="metric-header">
+                        <span class="metric-label">Variables Totales</span>
+                        <i class="fa-solid fa-list-ol metric-icon" style="color: var(--info)"></i>
+                    </div>
+                    <div class="metric-value" id="eda-total-cols">0</div>
+                    <span class="metric-description">Características registradas en el dataset</span>
+                </div>
+                <div class="metric-card card-business">
+                    <div class="metric-header">
+                        <span class="metric-label">Registros de Entrenamiento (Filtrados)</span>
+                        <i class="fa-solid fa-vial-virus metric-icon" style="color: var(--info)"></i>
+                    </div>
+                    <div class="metric-value" id="eda-filtered-rows">0</div>
+                    <span class="metric-description">Excluyendo préstamos vigentes o no maduros</span>
+                </div>
+            </div>
+
+            <div class="grid-two-cols">
+                <!-- Columna Izquierda: Target y Nulos -->
+                <div class="chart-panel">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-chart-pie"></i> Distribución de Variable Objetivo (Clases Binarias)</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div class="chart-wrapper" style="height: 220px; width: 220px; margin-bottom: 16px; margin-top: 10px;">
+                            <canvas id="edaTargetChart"></canvas>
+                        </div>
+                        <div style="width: 100%;">
+                            <table class="comp-table" style="font-size: 0.8rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Target</th>
+                                        <th>Registros</th>
+                                        <th>Porcentaje</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="eda-target-tbody">
+                                    <!-- Dinámico -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calidad del dato (Valores nulos) -->
+                <div class="chart-panel">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-clipboard-question"></i> Calidad del Dato (Valores Nulos Detectados)</span>
+                    </div>
+                    <div style="overflow-y: auto; max-height: 330px;">
+                        <table class="comp-table" style="font-size: 0.8rem;">
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Nulos</th>
+                                    <th>Porcentaje</th>
+                                    <th>Calidad</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eda-nulls-tbody">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-two-cols" style="grid-template-columns: 0.95fr 1.05fr;">
+                <!-- Distribución Categórica -->
+                <div class="chart-panel">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-chart-simple"></i> Distribución por Grado de Riesgo (Basilea)</span>
+                    </div>
+                    <div class="chart-wrapper" style="height: 280px;">
+                        <canvas id="edaRiskGradeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Estadísticas descriptivas -->
+                <div class="chart-panel">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-table-list"></i> Estadísticas Descriptivas de Características Numéricas</span>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="comp-table" style="font-size: 0.75rem;">
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Media</th>
+                                    <th>Mediana</th>
+                                    <th>Desv. Est.</th>
+                                    <th>Mínimo</th>
+                                    <th>Máximo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eda-desc-tbody">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matriz de Correlación Heatmap -->
+            <div class="chart-panel" style="margin-top: 24px; margin-bottom: 24px;">
+                <div class="panel-header">
+                    <span class="panel-title"><i class="fa-solid fa-border-all"></i> Matriz de Correlaciones Numéricas (Heatmap Interactivo)</span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="eda-corr-table" class="comp-table" style="font-size: 0.75rem; text-align: center; border-collapse: collapse; border: 1px solid var(--border-color); width: 100%;">
+                        <!-- Dinámico -->
+                    </table>
+                </div>
+                <div style="display: flex; justify-content: center; gap: 20px; font-size: 0.75rem; margin-top: 12px; font-weight: 600;">
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: rgba(0, 43, 73, 0.7); display: inline-block; border-radius: 2px;"></span> Correlación Negativa Alta</span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: #fff; border: 1px solid var(--border-color); display: inline-block; border-radius: 2px;"></span> Sin Correlación</span>
+                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; background: rgba(196, 154, 0, 0.7); display: inline-block; border-radius: 2px;"></span> Correlación Positiva Alta</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: EXPLICABILIDAD (SHAP) -->
+        <div id="tab-explicabilidad" class="tab-content">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fa-solid fa-brain"></i> Explicabilidad de Modelos (SHAP & Governance)</h2>
+                <span style="font-size: 0.8rem; color: #6b7280;"><i class="fa-solid fa-lock"></i> Cumplimiento Normativo de Transparencia (IA de la UE)</span>
+            </div>
+
+            <div class="grid-two-cols">
+                <!-- Importancia Global -->
+                <div class="chart-panel">
+                    <div class="panel-header">
+                        <span class="panel-title"><i class="fa-solid fa-chart-bar"></i> Importancia Global de Variables (SHAP Global)</span>
+                    </div>
+                    <div style="margin-bottom: 12px; font-size: 0.8rem; color: var(--text-muted);">
+                        El gráfico muestra el impacto absoluto medio de cada característica en las predicciones de default. Mayor longitud indica mayor importancia global.
+                    </div>
+                    <div class="chart-wrapper" style="height: 380px;">
+                        <canvas id="shapGlobalChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Caso Práctico (Local Explainability) -->
+                <div class="chart-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="panel-header">
+                            <span class="panel-title"><i class="fa-solid fa-people-arrows"></i> Explicabilidad Local: Análisis Comparativo de Clientes</span>
+                        </div>
+                        
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+                            Comparamos cómo interpreta el modelo dos expedientes crediticios opuestos. A continuación se desglosan las características que más empujan su riesgo.
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex-grow: 1;">
+                        <!-- Cliente Bajo Riesgo -->
+                        <div style="border: 1px solid var(--border-color); border-radius: 4px; padding: 16px; background-color: #f0fdf4; border-left: 4px solid var(--success); display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 700; color: #166534; font-size: 0.85rem;"><i class="fa-solid fa-circle-check"></i> Bajo Riesgo</span>
+                                    <span style="font-family: monospace; font-size: 0.75rem; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 3px;">Exp. Solvente</span>
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <span style="font-size: 0.75rem; color: #166534; font-weight: 600;">Probabilidad de Default:</span>
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: #15803d;" id="shap-low-prob">0.0%</div>
+                                </div>
+                                
+                                <span style="font-size: 0.7rem; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Factores Decisivos:</span>
+                                <div id="shap-low-factors" style="margin-top: 6px; display: flex; flex-direction: column; gap: 8px;">
+                                    <!-- Dinámico -->
+                                </div>
+                            </div>
+                            <div style="margin-top: 14px; border-top: 1px solid rgba(22, 101, 52, 0.1); padding-top: 10px; font-size: 0.75rem; color: #166534;">
+                                <strong>Perfil:</strong> Historial crediticio solvente y balance de deuda óptimo.
+                            </div>
+                        </div>
+
+                        <!-- Cliente Alto Riesgo -->
+                        <div style="border: 1px solid var(--border-color); border-radius: 4px; padding: 16px; background-color: #fef2f2; border-left: 4px solid var(--danger); display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 700; color: #991b1b; font-size: 0.85rem;"><i class="fa-solid fa-circle-xmark"></i> Alto Riesgo</span>
+                                    <span style="font-family: monospace; font-size: 0.75rem; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 3px;">Exp. Rechazado</span>
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <span style="font-size: 0.75rem; color: #991b1b; font-weight: 600;">Probabilidad de Default:</span>
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: #b91c1c;" id="shap-high-prob">0.0%</div>
+                                </div>
+                                
+                                <span style="font-size: 0.7rem; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">Factores Decisivos:</span>
+                                <div id="shap-high-factors" style="margin-top: 6px; display: flex; flex-direction: column; gap: 8px;">
+                                    <!-- Dinámico -->
+                                </div>
+                            </div>
+                            <div style="margin-top: 14px; border-top: 1px solid rgba(153, 27, 27, 0.1); padding-top: 10px; font-size: 0.75rem; color: #991b1b;">
+                                <strong>Perfil:</strong> Consultas crediticias y ratio préstamo/ingresos elevados.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ficha de Diagnóstico Analítico -->
+        <div class="insights-box">
+            <h3 class="insights-title"><i class="fa-solid fa-lightbulb" style="color: var(--ms-gold)"></i> Diagnóstico
+                Analítico y Recomendación de Reentrenamiento</h3>
+            <div class="insights-content">
+                <p>Nuestros modelos han experimentado una mejora notable tras el ajuste de pesos en la función de
+                    pérdida y la incorporación de variables críticas de riesgo crediticio:</p>
+                <ul>
+                    <li><strong>Estrategia de Modelos Sintonizada:</strong> Al optimizar la rejilla utilizando
+                        <strong>F1-score</strong>, el modelo **LightGBM** ha logrado posicionarse como Campeón con un
+                        balance óptimo del **41.42%** de F1-score y un poder de discriminación (ROC-AUC) de **68.47%**.
+                    </li>
+                    <li><strong>Eficiencia del Loss de Impagos:</strong> La sintonización del parámetro de pérdida
+                        weighted cross-entropy (`scale_pos_weight`) en LightGBM y XGBoost ha permitido mantener una tasa
+                        de captura (Recall) sólida de más del **64%** sin deteriorar la métrica Precision, maximizando
+                        el número de pérdidas evitadas por préstamos fallidos.</li>
+                    <li><strong>Auditoría de Data Drift (PSI):</strong> El indicador PSI revela cambios menores en la
+                        variable de <code>ingresos</code> (PSI de 0.14), lo cual representa un **drift moderado**. No
+                        requiere acciones urgentes de reentrenamiento, pero se recomienda monitorización semanal.</li>
+                    <li><strong>Respuesta de API:</strong> Con latencias inferiores a los **51 ms**, el pipeline de
+                        producción está calificado como altamente estable y listo para soportar cargas de inferencia en
+                        tiempo real.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts de Gráficos e Interactividad -->
+    <script>
+        // Fuentes del gráfico limpias y adaptadas al branding claro
+        Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.color = '#4b5563';
+
+        let chartEvo, chartDrift, chartComp, chartEdaTarget, chartEdaRisk, chartShapGlobal;
+        let globalMetricsData = null;
+
+        // 1. Gestión de Pestañas
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                button.classList.add('active');
+                const targetTab = button.getAttribute('data-tab');
+                document.getElementById('tab-' + targetTab).classList.add('active');
+
+                // Repintar al cambiar visibilidad
+                if (chartEvo) chartEvo.resize();
+                if (chartDrift) chartDrift.resize();
+                if (chartComp) chartComp.resize();
+                if (chartEdaTarget) chartEdaTarget.resize();
+                if (chartEdaRisk) chartEdaRisk.resize();
+                if (chartShapGlobal) chartShapGlobal.resize();
+            });
+        });
+
+        // 2. Calculadora de Pérdidas de Cartera
+        function updateSimulator() {
+            if (!globalMetricsData) return;
+
+            const volume = parseFloat(document.getElementById('slider-volume').value);
+            const defaultRate = parseFloat(document.getElementById('slider-default').value) / 100;
+            const LGD = parseFloat(document.getElementById('slider-lgd').value) / 100;
+            const EAD = parseFloat(document.getElementById('slider-ead').value) / 100;
+            const recall = parseFloat(document.getElementById('slider-recall').value) / 100;
+
+            // Textos de sliders formateados
+            document.getElementById('val-slider-volume').innerText = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(volume);
+            document.getElementById('val-slider-default').innerText = (defaultRate * 100).toFixed(0) + "%";
+            document.getElementById('val-slider-lgd').innerText = (LGD * 100).toFixed(0) + "%";
+            document.getElementById('val-slider-ead').innerText = (EAD * 100).toFixed(0) + "%";
+            document.getElementById('val-slider-recall').innerText = (recall * 100).toFixed(1) + "%";
+
+            // Fórmula regulatoria de Pérdida Esperada (EL = EAD * PD * LGD)
+            const expectedTotalLoss = volume * EAD * defaultRate * LGD;
+            const avoidedLoss = expectedTotalLoss * recall;
+            const residualLoss = expectedTotalLoss * (1 - recall);
+
+            document.getElementById('sim-loss-no-model').innerText = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(expectedTotalLoss);
+            document.getElementById('sim-avoided-loss').innerText = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(avoidedLoss);
+            document.getElementById('sim-residual-loss').innerText = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(residualLoss);
+
+            const mitigationPct = (recall * 100).toFixed(1) + "%";
+            document.getElementById('sim-mitigation-pct').innerText = mitigationPct;
+            document.getElementById('sim-progress-bar').style.width = mitigationPct;
+        }
+
+        document.getElementById('slider-volume').addEventListener('input', updateSimulator);
+        document.getElementById('slider-default').addEventListener('input', updateSimulator);
+        document.getElementById('slider-lgd').addEventListener('input', updateSimulator);
+        document.getElementById('slider-ead').addEventListener('input', updateSimulator);
+        document.getElementById('slider-recall').addEventListener('input', updateSimulator);
+
+
+        // 3. Integración Dinámica de Datos
+        async function fetchDynamicMetrics() {
+            try {
+                const response = await fetch('metrics.json');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                globalMetricsData = data;
+
+                // Actualizar Campeón
+                const champ = data.champion;
+                const m = champ.metrics;
+
+                document.getElementById('champion-model-name-title').innerText = champ.model_name;
+                document.getElementById('val-accuracy').innerText = m.accuracy.toFixed(1) + "%";
+                document.getElementById('val-precision').innerText = m.precision.toFixed(1) + "%";
+                document.getElementById('val-recall').innerText = m.recall.toFixed(1) + "%";
+                document.getElementById('val-f1').innerText = m.f1_score.toFixed(1) + "%";
+                document.getElementById('val-roc-auc').innerText = (m.roc_auc / 100).toFixed(3);
+
+                // Gobernanza panel
+                document.getElementById('gov-model-name').innerText = `Champion_${champ.model_name}_MVP_Balanced`;
+                document.getElementById('gov-framework').innerText = `${champ.model_name} (scikit-learn Pipeline)`;
+
+                // Telemetría API
+                const b = data.business;
+                document.getElementById('val-latency').innerText = b.pipeline_latency + " ms";
+                document.getElementById('val-error-rate').innerText = b.pipeline_error_rate.toFixed(2) + "%";
+
+                // Referencia en Simulador
+                document.getElementById('real-recall-ref').innerText = m.recall.toFixed(2);
+
+                // Inicializar slider Recall
+                const sliderRecall = document.getElementById('slider-recall');
+                if (sliderRecall.getAttribute('data-init') !== 'true') {
+                    sliderRecall.value = Math.round(m.recall);
+                    sliderRecall.setAttribute('data-init', 'true');
+                }
+
+                updateSimulator();
+
+                // Tabla Comparativa
+                const tbody = document.getElementById('comparison-table-body');
+                tbody.innerHTML = '';
+
+                data.comparison.forEach((model) => {
+                    const isChamp = model.name === champ.model_name;
+                    const tr = document.createElement('tr');
+                    if (isChamp) tr.className = 'champion-row';
+
+                    tr.innerHTML = `
+                        <td style="font-weight: bold; color: ${isChamp ? 'var(--ms-navy)' : 'var(--text-primary)'}">
+                            ${model.name}
+                        </td>
+                        <td style="font-weight: bold;">${(model.f1 * 100).toFixed(1)}%</td>
+                        <td>${model.roc_auc.toFixed(3)}</td>
+                        <td>${(model.accuracy * 100).toFixed(1)}%</td>
+                        <td>${(model.recall * 100).toFixed(1)}%</td>
+                        <td>
+                            ${isChamp ? '<span class="champion-badge-cell"><i class="fa-solid fa-circle-check"></i> EN PRODUCCIÓN</span>' : '<span style="color: var(--text-muted); font-size: 0.8rem;">Candidato</span>'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                // Gráfico de Evolución (Concept Drift) - Colores corporativos MS claro
+                if (chartEvo) chartEvo.destroy();
+                const ctxEvo = document.getElementById('evolutionChart').getContext('2d');
+
+                const gradRoc = ctxEvo.createLinearGradient(0, 0, 0, 300);
+                gradRoc.addColorStop(0, 'rgba(0, 43, 73, 0.08)');
+                gradRoc.addColorStop(1, 'rgba(0, 43, 73, 0)');
+
+                const gradF1 = ctxEvo.createLinearGradient(0, 0, 0, 300);
+                gradF1.addColorStop(0, 'rgba(196, 154, 0, 0.08)');
+                gradF1.addColorStop(1, 'rgba(196, 154, 0, 0)');
+
+                chartEvo = new Chart(ctxEvo, {
+                    type: 'line',
+                    data: {
+                        labels: data.evolution.labels,
+                        datasets: [
+                            {
+                                label: 'ROC-AUC',
+                                data: data.evolution.roc_auc,
+                                borderColor: '#002b49', // MS Navy
+                                backgroundColor: gradRoc,
+                                borderWidth: 2.5,
+                                fill: true,
+                                pointBackgroundColor: '#002b49',
+                                pointBorderColor: '#ffffff',
+                                pointHoverRadius: 5,
+                                tension: 0.25
+                            },
+                            {
+                                label: 'F1-Score',
+                                data: data.evolution.f1_score,
+                                borderColor: '#c49a00', // MS Gold
+                                backgroundColor: gradF1,
+                                borderWidth: 2,
+                                fill: true,
+                                pointBackgroundColor: '#c49a00',
+                                pointBorderColor: '#ffffff',
+                                pointHoverRadius: 5,
+                                borderDash: [4, 4],
+                                tension: 0.25
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: 'var(--ms-navy)', font: { weight: 'bold', size: 11 } }
+                            },
+                            tooltip: {
+                                backgroundColor: '#ffffff',
+                                titleColor: 'var(--ms-navy)',
+                                bodyColor: 'var(--text-primary)',
+                                borderColor: 'var(--border-color)',
+                                borderWidth: 1,
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                min: Math.min(...data.evolution.f1_score) - 0.05,
+                                max: Math.max(...data.evolution.roc_auc) + 0.05,
+                                grid: { color: 'rgba(0, 0, 0, 0.04)' },
+                                ticks: { color: '#666666' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#666666' }
+                            }
+                        }
+                    }
+                });
+
+                // Gráfico Data Drift
+                if (chartDrift) chartDrift.destroy();
+                const ctxDrift = document.getElementById('driftChart').getContext('2d');
+                chartDrift = new Chart(ctxDrift, {
+                    type: 'bar',
+                    data: {
+                        labels: data.data_drift.labels,
+                        datasets: [{
+                            label: 'Índice PSI',
+                            data: data.data_drift.psi,
+                            backgroundColor: function (context) {
+                                const val = context.dataset.data[context.dataIndex];
+                                if (val >= 0.25) return '#ef4444'; // Danger
+                                if (val >= 0.10) return '#c49a00'; // Warning (MS Gold)
+                                return '#10b981'; // Success (Teal)
+                            },
+                            borderRadius: 3,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#ffffff',
+                                titleColor: '#002b49',
+                                bodyColor: '#1f2937',
+                                borderColor: '#e5e7eb',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = 'PSI: ' + context.parsed.x;
+                                        if (context.parsed.x >= 0.25) label += ' (Drift Crítico)';
+                                        else if (context.parsed.x >= 0.10) label += ' (Drift Moderado)';
+                                        else label += ' (Estable)';
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                max: 0.25,
+                                grid: { color: 'rgba(0, 0, 0, 0.04)' },
+                                ticks: { color: '#666666' },
+                                title: { display: true, text: 'Population Stability Index (PSI)', color: '#4b5563', font: { weight: 'bold', size: 11 } }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: { color: '#1f2937', font: { weight: 'bold' } }
+                            }
+                        }
+                    }
+                });
+
+                // Gráfico Comparativo
+                if (chartComp) chartComp.destroy();
+                const ctxComp = document.getElementById('comparisonChart').getContext('2d');
+
+                const modelColors = {
+                    "LightGBM": { border: '#002b49', bg: 'rgba(0, 43, 73, 0.85)' },        // MS Navy
+                    "XGBoost": { border: '#c49a00', bg: 'rgba(196, 154, 0, 0.85)' },        // MS Gold
+                    "Logistic_Regression": { border: '#64748b', bg: 'rgba(100, 116, 139, 0.85)' } // Slate Gray
+                };
+
+                let comparisonDatasets = [];
+                data.comparison.forEach((model) => {
+                    const isChamp = model.name === champ.model_name;
+                    const colorSet = modelColors[model.name] || { border: '#9ca3af', bg: 'rgba(156, 163, 175, 0.85)' };
+                    comparisonDatasets.push({
+                        label: model.name + (isChamp ? ' (Campeón)' : ''),
+                        data: [model.f1, model.roc_auc, model.accuracy, model.recall],
+                        borderColor: colorSet.border,
+                        backgroundColor: colorSet.bg,
+                        borderWidth: 2,
+                        borderRadius: 3,
+                        hoverBackgroundColor: colorSet.border
+                    });
+                });
+
+                chartComp = new Chart(ctxComp, {
+                    type: 'bar',
+                    data: {
+                        labels: ['F1-Score (Objetivo)', 'ROC-AUC', 'Accuracy', 'Recall'],
+                        datasets: comparisonDatasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: '#002b49', font: { weight: 'bold', size: 11 } }
+                            },
+                            tooltip: {
+                                backgroundColor: '#ffffff',
+                                titleColor: '#002b49',
+                                bodyColor: '#1f2937',
+                                borderColor: '#e5e7eb',
+                                borderWidth: 1,
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                min: 0.0,
+                                max: 1.0,
+                                grid: { color: 'rgba(0, 0, 0, 0.04)' },
+                                ticks: { color: '#666666' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#1f2937', font: { weight: 'bold' } }
+                            }
+                        }
+                    }
+                });
+
+                // --- INTEGRACIÓN DE EDA ---
+                if (data.eda && Object.keys(data.eda).length > 0) {
+                    const eda = data.eda;
+                    
+                    document.getElementById('eda-raw-rows').innerText = eda.dimensions.total_rows_raw_est.toLocaleString('es-ES');
+                    document.getElementById('eda-sample-rows').innerText = eda.dimensions.sample_rows.toLocaleString('es-ES');
+                    document.getElementById('eda-total-cols').innerText = eda.dimensions.total_columns;
+                    document.getElementById('eda-filtered-rows').innerText = eda.dimensions.filtered_rows.toLocaleString('es-ES');
+                    
+                    const nullsBody = document.getElementById('eda-nulls-tbody');
+                    nullsBody.innerHTML = '';
+                    const nullsArray = Object.keys(eda.nulls).map(k => ({name: k, ...eda.nulls[k]}));
+                    nullsArray.sort((a, b) => b.porcentaje - a.porcentaje);
+                    
+                    nullsArray.forEach(item => {
+                        const tr = document.createElement('tr');
+                        const statusBadge = item.porcentaje > 10 
+                            ? '<span class="status-badge" style="background-color:rgba(239, 68, 68, 0.12); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2);">Crítico</span>' 
+                            : item.porcentaje > 0 
+                            ? '<span class="status-badge" style="background-color:rgba(245, 158, 11, 0.12); color:#f59e0b; border:1px solid rgba(245, 158, 11, 0.2);">Moderado</span>' 
+                            : '<span class="status-badge" style="background-color:rgba(16, 185, 129, 0.12); color:#10b981; border:1px solid rgba(16, 185, 129, 0.2);">Excelente</span>';
+                            
+                        tr.innerHTML = `
+                            <td><strong>${item.name}</strong></td>
+                            <td>${item.nulos.toLocaleString('es-ES')}</td>
+                            <td style="font-weight: 600;">${item.porcentaje}%</td>
+                            <td>${statusBadge}</td>
+                        `;
+                        nullsBody.appendChild(tr);
+                    });
+                    
+                    const targetBody = document.getElementById('eda-target-tbody');
+                    targetBody.innerHTML = '';
+                    eda.target_distribution.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><strong>${item.label}</strong></td>
+                            <td>${item.count.toLocaleString('es-ES')}</td>
+                            <td style="font-weight: 600; color: var(--ms-navy);">${item.percentage}%</td>
+                        `;
+                        targetBody.appendChild(tr);
+                    });
+                    
+                    const descBody = document.getElementById('eda-desc-tbody');
+                    descBody.innerHTML = '';
+                    Object.keys(eda.descriptive_stats).forEach(k => {
+                        const s = eda.descriptive_stats[k];
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><strong>${k}</strong></td>
+                            <td>${s.mean.toLocaleString('es-ES')}</td>
+                            <td>${s.median.toLocaleString('es-ES')}</td>
+                            <td>${s.std.toLocaleString('es-ES')}</td>
+                            <td>${s.min.toLocaleString('es-ES')}</td>
+                            <td>${s.max.toLocaleString('es-ES')}</td>
+                        `;
+                        descBody.appendChild(tr);
+                    });
+                    
+                    const corrTable = document.getElementById('eda-corr-table');
+                    corrTable.innerHTML = '';
+                    
+                    const corrHead = document.createElement('thead');
+                    const corrHeadRow = document.createElement('tr');
+                    corrHeadRow.innerHTML = '<th></th>' + eda.correlation.columns.map(c => `<th style="text-align: center;">${c.substring(0, 12)}...</th>`).join('');
+                    corrHead.appendChild(corrHeadRow);
+                    corrTable.appendChild(corrHead);
+                    
+                    const corrBody = document.createElement('tbody');
+                    eda.correlation.columns.forEach((rowName, rIdx) => {
+                        const tr = document.createElement('tr');
+                        let cellsHtml = `<td style="font-weight: bold; text-align: left; background-color: #f8fafc;">${rowName}</td>`;
+                        
+                        eda.correlation.matrix[rIdx].forEach((val, cIdx) => {
+                            let bg = '#ffffff';
+                            let textCol = 'var(--text-primary)';
+                            
+                            if (val > 0.05) {
+                                bg = `rgba(196, 154, 0, ${val * 0.8})`;
+                                if (val > 0.5) textCol = '#ffffff';
+                            } else if (val < -0.05) {
+                                bg = `rgba(0, 43, 73, ${Math.abs(val) * 0.8})`;
+                                if (Math.abs(val) > 0.5) textCol = '#ffffff';
+                            }
+                            
+                            cellsHtml += `<td style="background-color: ${bg}; color: ${textCol}; font-weight: bold; text-align: center; border: 1px solid var(--border-color);" title="Correlación entre ${rowName} y ${eda.correlation.columns[cIdx]}: ${val}">
+                                ${val.toFixed(2)}
+                            </td>`;
+                        });
+                        tr.innerHTML = cellsHtml;
+                        corrBody.appendChild(tr);
+                    });
+                    corrTable.appendChild(corrBody);
+                    
+                    renderEdaCharts(eda);
+                }
+
+                // --- INTEGRACIÓN DE SHAP ---
+                if (data.shap && Object.keys(data.shap).length > 0 && !data.shap.error) {
+                    const shap = data.shap;
+                    
+                    const low = shap.local.low_risk;
+                    document.getElementById('shap-low-prob').innerText = low.probability.toFixed(1) + "%";
+                    const lowFactorsContainer = document.getElementById('shap-low-factors');
+                    lowFactorsContainer.innerHTML = '';
+                    low.factors.forEach(f => {
+                        const div = document.createElement('div');
+                        div.style.display = 'flex';
+                        div.style.flexDirection = 'column';
+                        div.style.gap = '2px';
+                        
+                        const isIncrease = f.shap > 0;
+                        const badgeColor = isIncrease ? '#ef4444' : '#10b981';
+                        const badgeBg = isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+                        const effectIcon = isIncrease ? '<i class="fa-solid fa-arrow-trend-up"></i>' : '<i class="fa-solid fa-arrow-trend-down"></i>';
+                        
+                        div.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+                                <strong>${f.feature}</strong>
+                                <span style="color:#6b7280;">Valor: ${f.value}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 3px;">
+                                <span style="font-size:0.7rem; color:${badgeColor}; background-color:${badgeBg}; padding:2px 6px; border-radius:3px; font-weight:700; display:inline-flex; align-items:center; gap:3px;">
+                                    ${effectIcon} ${isIncrease ? 'Aumenta riesgo' : 'Reduce riesgo'}
+                                </span>
+                                <span style="font-family:monospace; font-size:0.75rem; font-weight:bold; color:${badgeColor};">
+                                    SHAP: ${f.shap > 0 ? '+' : ''}${f.shap.toFixed(4)}
+                                </span>
+                            </div>
+                        `;
+                        lowFactorsContainer.appendChild(div);
+                    });
+                    
+                    const high = shap.local.high_risk;
+                    document.getElementById('shap-high-prob').innerText = high.probability.toFixed(1) + "%";
+                    const highFactorsContainer = document.getElementById('shap-high-factors');
+                    highFactorsContainer.innerHTML = '';
+                    high.factors.forEach(f => {
+                        const div = document.createElement('div');
+                        div.style.display = 'flex';
+                        div.style.flexDirection = 'column';
+                        div.style.gap = '2px';
+                        
+                        const isIncrease = f.shap > 0;
+                        const badgeColor = isIncrease ? '#ef4444' : '#10b981';
+                        const badgeBg = isIncrease ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+                        const effectIcon = isIncrease ? '<i class="fa-solid fa-arrow-trend-up"></i>' : '<i class="fa-solid fa-arrow-trend-down"></i>';
+                        
+                        div.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+                                <strong>${f.feature}</strong>
+                                <span style="color:#6b7280;">Valor: ${f.value}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 3px;">
+                                <span style="font-size:0.7rem; color:${badgeColor}; background-color:${badgeBg}; padding:2px 6px; border-radius:3px; font-weight:700; display:inline-flex; align-items:center; gap:3px;">
+                                    ${effectIcon} ${isIncrease ? 'Aumenta riesgo' : 'Reduce riesgo'}
+                                </span>
+                                <span style="font-family:monospace; font-size:0.75rem; font-weight:bold; color:${badgeColor};">
+                                    SHAP: ${f.shap > 0 ? '+' : ''}${f.shap.toFixed(4)}
+                                </span>
+                            </div>
+                        `;
+                        highFactorsContainer.appendChild(div);
+                    });
+                    
+                    renderShapGlobalChart(shap);
+                }
+
+            } catch (error) {
+                console.error("Error al cargar metrics.json.", error);
+            }
+        }
+
+        // --- FUNCIONES AUXILIARES PARA GRÁFICOS DE EDA Y SHAP ---
+        function renderEdaCharts(eda) {
+            const ctxTarget = document.getElementById('edaTargetChart').getContext('2d');
+            if (chartEdaTarget) chartEdaTarget.destroy();
+            
+            const labels = eda.target_distribution.map(item => item.label);
+            const counts = eda.target_distribution.map(item => item.count);
+            
+            chartEdaTarget = new Chart(ctxTarget, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: ['#002b49', '#c49a00'],
+                        borderWidth: 1,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 8,
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const ctxRisk = document.getElementById('edaRiskGradeChart').getContext('2d');
+            if (chartEdaRisk) chartEdaRisk.destroy();
+            
+            const riskData = [...eda.categorical_distribution.grado_riesgo];
+            riskData.sort((a, b) => a.label.localeCompare(b.label));
+            
+            const riskLabels = riskData.map(item => "Grado " + item.label);
+            const riskCounts = riskData.map(item => item.count);
+            
+            chartEdaRisk = new Chart(ctxRisk, {
+                type: 'bar',
+                data: {
+                    labels: riskLabels,
+                    datasets: [{
+                        label: 'Número de Préstamos',
+                        data: riskCounts,
+                        backgroundColor: 'rgba(0, 43, 73, 0.85)',
+                        borderColor: '#002b49',
+                        borderWidth: 1,
+                        borderRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(0, 0, 0, 0.04)' },
+                            ticks: { color: '#666666' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#1f2937', font: { weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderShapGlobalChart(shap) {
+            const ctxShap = document.getElementById('shapGlobalChart').getContext('2d');
+            if (chartShapGlobal) chartShapGlobal.destroy();
+            
+            const shapData = [...shap.global].reverse();
+            const labels = shapData.map(item => item.feature);
+            const importances = shapData.map(item => item.importance);
+            
+            chartShapGlobal = new Chart(ctxShap, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Impacto SHAP medio (Absoluto)',
+                        data: importances,
+                        backgroundColor: 'rgba(196, 154, 0, 0.85)',
+                        borderColor: '#c49a00',
+                        borderWidth: 1.5,
+                        borderRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(0, 0, 0, 0.04)' },
+                            ticks: { color: '#666666' },
+                            title: { display: true, text: 'Importancia media |mean(SHAP value)|', color: '#4b5563', font: { weight: 'bold', size: 10 } }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#1f2937', font: { weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        fetchDynamicMetrics();
+        setInterval(fetchDynamicMetrics, 15000);
+    </script>
+</body>
+
+</html>
