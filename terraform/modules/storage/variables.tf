@@ -20,6 +20,11 @@ variable "storage_class" {
   default     = "STANDARD"
 }
 
+variable "default_kms_key_name" {
+  description = "Nombre completo de la clave KMS usada como CMEK por defecto del bucket."
+  type        = string
+}
+
 variable "versioning" {
   description = "Versionado de objetos. Apagado por defecto: versionar duplica almacenamiento y coste."
   type        = bool

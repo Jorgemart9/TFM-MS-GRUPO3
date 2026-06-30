@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLOps Control Center - Credit Risk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="../artifacts/v7/dashboard_data.js?v=20260630b"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#003B5C',
+                        navyDark: '#002A42',
+                        orange: '#F25C05',
+                        soft: '#F5F7FA',
+                        ink: '#0F2533'
+                    },
+                    boxShadow: {
+                        panel: '0 12px 30px rgba(0, 59, 92, 0.08)'
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .chart-box {
+            position: relative;
+            height: 315px;
+        }
+
+        .drift-chart-box {
+            position: relative;
+            height: 335px;
+        }
+
+        .loader {
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255, 255, 255, 0.45);
+            border-top-color: #ffffff;
+            border-radius: 9999px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-soft text-ink">
+    <div class="min-h-screen lg:flex">
+        <aside class="bg-navy text-white lg:w-72 lg:min-h-screen">
+            <div class="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-5 lg:block">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-11 w-11 items-center justify-center rounded bg-white/10 ring-1 ring-white/15">
+                            <i data-lucide="activity" class="h-6 w-6 text-orange"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-white/60">MLOps</p>
+                            <h1 class="text-lg font-bold leading-tight">Control Center</h1>
+                        </div>
+                    </div>
+                    <p class="mt-4 hidden text-sm leading-6 text-white/68 lg:block">Credit Risk model governance, drift control and automated retraining operations.</p>
+                </div>
+                <div class="rounded-full bg-orange/15 px-3 py-1 text-xs font-bold text-orange ring-1 ring-orange/25 lg:mt-5 lg:inline-flex">Warning</div>
+            </div>
+
+            <nav class="flex gap-2 overflow-x-auto px-4 py-3 lg:block lg:space-y-1 lg:overflow-visible lg:py-6">
+                <a href="#overview" class="flex shrink-0 items-center gap-3 rounded px-4 py-3 text-sm font-semibold text-white bg-white/12">
+                    <i data-lucide="layout-dashboard" class="h-4 w-4 text-orange"></i> Overview
+                </a>
+                <a href="#model-drift" class="flex shrink-0 items-center gap-3 rounded px-4 py-3 text-sm font-semibold text-white/78 hover:bg-white/10 hover:text-white">
+                    <i data-lucide="line-chart" class="h-4 w-4"></i> Model Drift
+                </a>
+                <a href="#data-drift" class="flex shrink-0 items-center gap-3 rounded px-4 py-3 text-sm font-semibold text-white/78 hover:bg-white/10 hover:text-white">
+                    <i data-lucide="bar-chart-3" class="h-4 w-4"></i> Data Drift
+                </a>
+                <a href="#business" class="flex shrink-0 items-center gap-3 rounded px-4 py-3 text-sm font-semibold text-white/78 hover:bg-white/10 hover:text-white">
+                    <i data-lucide="briefcase-business" class="h-4 w-4"></i> Business KPIs
+                </a>
+                <a href="#logs" class="flex shrink-0 items-center gap-3 rounded px-4 py-3 text-sm font-semibold text-white/78 hover:bg-white/10 hover:text-white">
+                    <i data-lucide="scroll-text" class="h-4 w-4"></i> Logs de Retraining
+                </a>
+            </nav>
+        </aside>
+
+        <main class="flex-1">
+            <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+                <div class="flex flex-col gap-4 px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.2em] text-orange">Gobierno de Modelos</p>
+                        <h2 class="mt-1 text-2xl font-bold tracking-tight text-navy md:text-3xl">MLOps Control Center - Credit Risk</h2>
+                    </div>
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <label class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500" for="modelSelector">Modelo activo</label>
+                        <div class="relative">
+                            <select id="modelSelector" class="w-full appearance-none rounded border border-slate-200 bg-white py-3 pl-4 pr-10 text-sm font-semibold text-navy shadow-sm outline-none transition focus:border-orange focus:ring-4 focus:ring-orange/10 sm:w-80">
+                                <option>Champion_Credit_Risk_CostOptimized_v6 · LightGBM</option>
+                                <option>Champion_Credit_Risk_CostOptimized_v1 · LightGBM · Balanced Policy</option>
+                                <option>Champion_XGBoost_Calibrado_v4 · MLflow Registry</option>
+                                <option>Champion_XGBoost_Calibrado_v3</option>
+                                <option>Champion_XGBoost_OOT_Ratios_v1</option>
+                            </select>
+                            <i data-lucide="chevron-down" class="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-navy"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <section id="overview" class="space-y-6 px-5 py-6 lg:px-8">
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <article class="rounded border border-orange/30 bg-white p-5 shadow-panel">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-500">Model Health</p>
+                                <p class="mt-3 text-xl font-bold text-orange">Warning</p>
+                                <p class="mt-1 text-sm font-semibold text-red-600">Drift activo · Champion actualizado</p>
+                            </div>
+                            <div class="rounded bg-orange/10 p-3 text-orange">
+                                <i data-lucide="triangle-alert" class="h-6 w-6"></i>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="rounded border border-slate-200 bg-white p-5 shadow-panel">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-500">Current ROC-AUC</p>
+                                <p id="kpi-rocauc" class="mt-3 text-3xl font-bold text-navy">0.6289</p>
+                                <p id="kpi-rocauc-trend" class="mt-1 flex items-center gap-1 text-sm font-bold text-red-700">
+                                    <i data-lucide="arrow-down-right" class="h-4 w-4"></i> -0.3% vs v4
+                                </p>
+                            </div>
+                            <div class="rounded bg-emerald-50 p-3 text-emerald-700">
+                                <i data-lucide="trending-up" class="h-6 w-6"></i>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="rounded border border-slate-200 bg-white p-5 shadow-panel">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-500">Last Retrained</p>
+                                <p class="mt-3 text-3xl font-bold text-navy">Hoy</p>
+                                <p class="mt-1 text-sm font-semibold text-slate-500">2026-06-19 15:21 · v5.1 policy</p>
+                            </div>
+                            <div class="rounded bg-navy/10 p-3 text-navy">
+                                <i data-lucide="calendar-clock" class="h-6 w-6"></i>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="rounded border border-slate-200 bg-white p-5 shadow-panel">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-500">Data Quality Score</p>
+                                <p class="mt-3 text-3xl font-bold text-navy">97.4<span class="text-lg text-slate-400">/100</span></p>
+                                <div class="mt-3 h-2 rounded-full bg-slate-100">
+                                    <div class="h-2 w-[97.4%] rounded-full bg-orange"></div>
+                                </div>
+                            </div>
+                            <div class="rounded bg-orange/10 p-3 text-orange">
+                                <i data-lucide="database-zap" class="h-6 w-6"></i>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="mt-8 mb-6">
+                    <h2 class="text-2xl font-bold text-navy">Comparativa de Modelos (v6)</h2>
+                    <p class="text-sm text-slate-500">Métricas de clasificación en test: Baseline (Champion) vs Challenger.</p>
+                </div>
+
+                <div class="rounded border border-slate-200 bg-white shadow-panel mb-8 overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
+                            <tr>
+                                <th class="px-6 py-4 font-bold uppercase tracking-wider">Métrica</th>
+                                <th class="px-6 py-4 font-bold uppercase tracking-wider text-navy">Baseline (LightGBM)</th>
+                                <th class="px-6 py-4 font-bold uppercase tracking-wider text-orange">Challenger (XGBoost)</th>
+                                <th class="px-6 py-4 font-bold uppercase tracking-wider">Variación</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr>
+                                <td class="px-6 py-4 font-semibold text-navy">ROC-AUC</td>
+                                <td id="cmp-base-roc" class="px-6 py-4 text-slate-600">0.6289</td>
+                                <td id="cmp-chal-roc" class="px-6 py-4 font-bold text-navy">0.6301</td>
+                                <td id="cmp-diff-roc" class="px-6 py-4 text-emerald-600 font-bold">+0.0012</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-semibold text-navy">Accuracy</td>
+                                <td id="cmp-base-acc" class="px-6 py-4 text-slate-600">0.2797</td>
+                                <td id="cmp-chal-acc" class="px-6 py-4 font-bold text-navy">0.2746</td>
+                                <td id="cmp-diff-acc" class="px-6 py-4 text-red-600 font-bold">-0.0051</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-semibold text-navy">Precision</td>
+                                <td id="cmp-base-pre" class="px-6 py-4 text-slate-600">0.2443</td>
+                                <td id="cmp-chal-pre" class="px-6 py-4 font-bold text-navy">0.2434</td>
+                                <td id="cmp-diff-pre" class="px-6 py-4 text-red-600 font-bold">-0.0009</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-semibold text-navy">Recall</td>
+                                <td id="cmp-base-rec" class="px-6 py-4 text-slate-600">0.9777</td>
+                                <td id="cmp-chal-rec" class="px-6 py-4 font-bold text-navy">0.9816</td>
+                                <td id="cmp-diff-rec" class="px-6 py-4 text-emerald-600 font-bold">+0.0039</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-semibold text-navy">F1-Score</td>
+                                <td id="cmp-base-f1" class="px-6 py-4 text-slate-600">0.3909</td>
+                                <td id="cmp-chal-f1" class="px-6 py-4 font-bold text-navy">0.3901</td>
+                                <td id="cmp-diff-f1" class="px-6 py-4 text-red-600 font-bold">-0.0008</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="grid gap-6 xl:grid-cols-5">
+                    <article id="model-drift" class="rounded border border-slate-200 bg-white p-5 shadow-panel xl:col-span-3">
+                        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">Concept Drift</p>
+                                <h3 class="mt-1 text-lg font-bold text-navy">Comparativa de candidates v5 vs baseline</h3>
+                            </div>
+                            <span class="inline-flex w-fit items-center gap-2 rounded bg-red-50 px-3 py-2 text-xs font-bold text-red-700 ring-1 ring-red-100">
+                                <i data-lucide="alert-circle" class="h-4 w-4"></i> Tendencia descendente
+                            </span>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="conceptDriftChart"></canvas>
+                        </div>
+                    </article>
+
+                    <article id="data-drift" class="rounded border border-slate-200 bg-white p-5 shadow-panel xl:col-span-2">
+                        <div class="mb-5">
+                            <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">Data Drift</p>
+                            <h3 class="mt-1 text-lg font-bold text-navy">Drift Score por variable</h3>
+                            <p class="mt-1 text-sm text-slate-500">KS test OOT · alerta estadística si p-value &lt; 0.05</p>
+                        </div>
+                        <div class="drift-chart-box">
+                            <canvas id="dataDriftChart"></canvas>
+                        </div>
+                    </article>
+                </div>
+
+                <div id="business" class="grid gap-6 xl:grid-cols-5">
+                    <article class="rounded border border-slate-200 bg-white p-5 shadow-panel xl:col-span-3">
+                        <div class="mb-5 flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">Business Impact</p>
+                                <h3 class="mt-1 text-lg font-bold text-navy">Matriz de confusión simplificada</h3>
+                            </div>
+                            <i data-lucide="grid-3x3" class="h-6 w-6 text-navy"></i>
+                        </div>
+
+                        <div class="grid gap-3 text-center text-sm font-bold sm:grid-cols-[120px_1fr_1fr]">
+                            <div class="hidden sm:block"></div>
+                            <div class="rounded bg-slate-100 px-3 py-2 text-navy">Predicción: Bueno</div>
+                            <div class="rounded bg-slate-100 px-3 py-2 text-navy">Predicción: Default</div>
+
+                            <div class="rounded bg-slate-100 px-3 py-6 text-navy sm:flex sm:items-center sm:justify-center">Real: Bueno</div>
+                            <div class="rounded border border-emerald-200 bg-emerald-50 p-5">
+                                <p id="tn-val" class="text-3xl font-bold text-emerald-700">528</p>
+                                <p class="mt-1 text-xs uppercase tracking-[0.12em] text-emerald-700">True Negative</p>
+                            </div>
+                            <div class="rounded border border-orange/30 bg-orange/10 p-5">
+                                <p id="fp-val" class="text-3xl font-bold text-orange">7,764</p>
+                                <p class="mt-1 text-xs uppercase tracking-[0.12em] text-orange">False Positive</p>
+                            </div>
+
+                            <div class="rounded bg-slate-100 px-3 py-6 text-navy sm:flex sm:items-center sm:justify-center">Real: Default</div>
+                            <div class="rounded border border-red-200 bg-red-50 p-5">
+                                <p id="fn-val" class="text-3xl font-bold text-red-700">57</p>
+                                <p class="mt-1 text-xs uppercase tracking-[0.12em] text-red-700">False Negative</p>
+                            </div>
+                            <div class="rounded border border-emerald-200 bg-emerald-50 p-5">
+                                <p id="tp-val" class="text-3xl font-bold text-emerald-700">2,510</p>
+                                <p class="mt-1 text-xs uppercase tracking-[0.12em] text-emerald-700">True Positive</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <aside class="grid gap-4 xl:col-span-2">
+                        <article class="rounded border border-slate-200 bg-white p-5 shadow-panel">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-500">Coste de Falsos Positivos</p>
+                                    <h4 id="cost-fp" class="mt-2 text-3xl font-bold text-navy">€20.96M</h4>
+                                    <p id="desc-fp" class="mt-1 text-sm text-slate-500">7,764 rechazos erróneos · supuesto €2.7k</p>
+                                </div>
+                                <div class="rounded bg-orange/10 p-3 text-orange">
+                                    <i data-lucide="wallet-cards" class="h-6 w-6"></i>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="rounded border border-red-100 bg-white p-5 shadow-panel">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-500">Coste de Falsos Negativos</p>
+                                    <h4 id="cost-fn" class="mt-2 text-3xl font-bold text-red-700">€0.77M</h4>
+                                    <p id="desc-fn" class="mt-1 text-sm text-slate-500">57 defaults no detectados · supuesto €13.5k</p>
+                                </div>
+                                <div class="rounded bg-red-50 p-3 text-red-700">
+                                    <i data-lucide="landmark" class="h-6 w-6"></i>
+                                </div>
+                            </div>
+                        </article>
+                    </aside>
+                </div>
+
+                <div class="mt-8 mb-6">
+                    <h2 class="text-2xl font-bold text-navy">Evaluación Avanzada (v6)</h2>
+                    <p class="text-sm text-slate-500">Métricas de adopción A/B, interpretabilidad y equidad del modelo actual.</p>
+                </div>
+
+                <div class="grid gap-6 xl:grid-cols-3 mb-8">
+                    <!-- A/B Test Chart -->
+                    <article class="rounded border border-slate-200 bg-white p-5 shadow-panel xl:col-span-2">
+                        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">A/B Testing</p>
+                                <h3 class="mt-1 text-lg font-bold text-navy">Adopción Progresiva vs Business Cost</h3>
+                            </div>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="abTestChart"></canvas>
+                        </div>
+                    </article>
+
+                    <div class="flex flex-col gap-6">
+                        <!-- Fairness -->
+                        <article class="rounded border border-slate-200 bg-white p-5 shadow-panel flex-1">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">Fairness</p>
+                                    <h3 class="mt-1 text-lg font-bold text-navy">Demographic Parity Diff</h3>
+                                    <p id="kpi-fairness" class="mt-3 text-3xl font-bold text-emerald-700">0.045</p>
+                                    <p class="mt-1 text-sm font-semibold text-emerald-700">Dentro del margen ético (&lt; 0.1)</p>
+                                </div>
+                                <div class="rounded bg-emerald-50 p-3 text-emerald-700">
+                                    <i data-lucide="scale" class="h-6 w-6"></i>
+                                </div>
+                            </div>
+                        </article>
+                        
+                        <!-- SHAP -->
+                        <article class="rounded border border-slate-200 bg-white p-5 shadow-panel flex-1">
+                            <div class="flex items-start justify-between gap-3 mb-4">
+                                <div>
+                                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">Interpretabilidad</p>
+                                    <h3 class="mt-1 text-lg font-bold text-navy">Global Feature Importance (SHAP)</h3>
+                                </div>
+                                <div class="rounded bg-navy/10 p-3 text-navy">
+                                    <i data-lucide="microscope" class="h-6 w-6"></i>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <img src="../artifacts/v7/shap/shap_summary.png" alt="SHAP Summary Plot" class="max-h-64 object-contain rounded border border-slate-100">
+                            </div>
+                        </article>
+                    </div>
+                </div>
+
+                <section id="logs" class="grid gap-6 xl:grid-cols-5">
+                    <article class="rounded border border-orange/35 bg-white p-5 shadow-panel xl:col-span-2">
+                        <div class="flex items-start gap-4">
+                            <div class="rounded bg-orange/10 p-3 text-orange">
+                                <i data-lucide="radio-tower" class="h-7 w-7"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">Automatización</p>
+                                <h3 class="mt-1 text-xl font-bold text-navy">Data Drift Detectado en variables clave</h3>
+                                <p class="mt-3 text-sm leading-6 text-slate-600">Retraining v5 ejecutado: LightGBM sin grado_riesgo queda como mejor ranking model, pero se aplica una política balanceada con threshold 0.53 para limitar el rechazo al 49.7%. El drift sigue activo en variables clave.</p>
+                            </div>
+                        </div>
+                        <button id="retrainBtn" class="mt-6 flex w-full items-center justify-center gap-3 rounded bg-orange px-5 py-4 text-base font-bold text-white shadow-lg shadow-orange/20 transition hover:bg-[#d94f04] focus:outline-none focus:ring-4 focus:ring-orange/25">
+                            <i data-lucide="rocket" class="h-5 w-5"></i>
+                            <span>Trigger Automatic Retraining</span>
+                        </button>
+                        <div id="pipelineStatus" class="mt-4 hidden rounded border border-orange/20 bg-orange/5 p-4 text-sm font-semibold text-navy">
+                            <div class="flex items-center gap-3">
+                                <span class="loader bg-orange"></span>
+                                <span>Desplegando pipeline en Vertex AI / Cloud Run...</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="rounded border border-slate-200 bg-white p-5 shadow-panel xl:col-span-3">
+                        <div class="mb-4 flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-orange">Logs de Retraining</p>
+                                <h3 class="mt-1 text-lg font-bold text-navy">Últimos eventos operativos</h3>
+                            </div>
+                            <i data-lucide="terminal-square" class="h-6 w-6 text-navy"></i>
+                        </div>
+                        <div id="logList" class="space-y-3">
+                            <div class="rounded bg-orange/5 px-4 py-3 text-sm">
+                                <span class="font-bold text-navy">2026-06-19 15:21</span>
+                                <span class="ml-2 text-slate-600">Champion_Credit_Risk_CostOptimized v1 registered. LightGBM, balanced threshold 0.53, reject rate 49.7%, expected cost €22.73M.</span>
+                            </div>
+                            <div class="rounded bg-slate-50 px-4 py-3 text-sm">
+                                <span class="font-bold text-navy">2026-06-19 14:05</span>
+                                <span class="ml-2 text-slate-600">Champion_XGBoost_Calibrado v4 registered from pipeline.ipynb. ROC-AUC 0.6033, F1 0.3818.</span>
+                            </div>
+                            <div class="rounded bg-slate-50 px-4 py-3 text-sm">
+                                <span class="font-bold text-navy">2026-06-19 14:04</span>
+                                <span class="ml-2 text-slate-600">Champion_XGBoost_Calibrado v3 registered. ROC-AUC 0.6266, F1 0.3894.</span>
+                            </div>
+                            <div class="rounded bg-slate-50 px-4 py-3 text-sm">
+                                <span class="font-bold text-navy">2026-06-19 13:59</span>
+                                <span class="ml-2 text-slate-600">Champion_XGBoost_Calibrado v2 registered. ROC-AUC 0.6266, F1 0.3894.</span>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const navy = '#003B5C';
+        const orange = '#F25C05';
+        const red = '#DC2626';
+        const slate = '#64748B';
+
+        Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        Chart.defaults.color = slate;
+
+        new Chart(document.getElementById('conceptDriftChart'), {
+            type: 'line',
+            data: {
+                labels: ['XGB v4 baseline', 'XGB no grade', 'LGBM no grade', 'XGB grade review', 'LGBM grade review'],
+                datasets: [
+                    {
+                        label: 'F1-Score',
+                        data: [0.38177, 0.39201, 0.39293, 0.38504, 0.38624],
+                        borderColor: orange,
+                        backgroundColor: 'rgba(242, 92, 5, 0.12)',
+                        fill: true,
+                        tension: 0.38,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'ROC-AUC',
+                        data: [0.60331, 0.63091, 0.63100, 0.60616, 0.61039],
+                        borderColor: navy,
+                        backgroundColor: 'rgba(0, 59, 92, 0.08)',
+                        fill: true,
+                        tension: 0.38,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true }
+                    },
+                    tooltip: {
+                        backgroundColor: navy,
+                        padding: 12,
+                        cornerRadius: 4
+                    }
+                },
+                scales: {
+                    y: {
+                        min: 0.35,
+                        max: 0.65,
+                        ticks: { callback: value => value.toFixed(2) },
+                        grid: { color: 'rgba(148, 163, 184, 0.22)' }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('dataDriftChart'), {
+            type: 'bar',
+            data: {
+                labels: ['plazo_prestamo', 'puntuacion_crediticia_media', 'ratio_prestamo_ingresos', 'peso_prestamo_ingresos', 'importe_solicitado', 'porcentaje_uso_credito_revolving', 'ingresos_anuales', 'liquidez_residual_mensual'],
+                datasets: [{
+                    label: 'KS statistic',
+                    data: [0.61243, 0.53743, 0.29486, 0.24196, 0.17897, 0.15815, 0.13189, 0.12329],
+                    pValues: ['< 1e-300', '< 1e-300', '< 1e-300', '< 1e-300', '8.39e-289', '3.05e-225', '1.67e-140', '8.73e-123'],
+                    backgroundColor: context => ['importe_solicitado', 'ingresos_anuales'].includes(context.chart.data.labels[context.dataIndex]) ? orange : 'rgba(0, 59, 92, 0.72)',
+                    borderColor: context => ['importe_solicitado', 'ingresos_anuales'].includes(context.chart.data.labels[context.dataIndex]) ? red : navy,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barThickness: 22
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: navy,
+                        padding: 12,
+                        cornerRadius: 4,
+                        callbacks: {
+                            label: context => {
+                                const pValue = context.dataset.pValues[context.dataIndex];
+                                return ` KS: ${context.raw.toFixed(3)} · p-value: ${pValue}`;
+                            }
+                        }
+                    },
+                    annotation: false
+                },
+                scales: {
+                    x: {
+                        min: 0,
+                        max: 0.65,
+                        ticks: { callback: value => value.toFixed(2) },
+                        grid: { color: 'rgba(148, 163, 184, 0.22)' },
+                        title: { display: true, text: 'KS statistic' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            color: context => ['ingresos_anuales', 'importe_solicitado'].includes(context.tick.label) ? red : slate,
+                            font: context => ({
+                                weight: ['ingresos_anuales', 'importe_solicitado'].includes(context.tick.label) ? '700' : '500'
+                            })
+                        }
+                    }
+                }
+            },
+            plugins: [{
+                id: 'thresholdLine',
+                afterDraw(chart) {
+                    const { ctx, chartArea, scales } = chart;
+                    const x = scales.x.getPixelForValue(0.10);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x, chartArea.top);
+                    ctx.lineTo(x, chartArea.bottom);
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 6]);
+                    ctx.strokeStyle = red;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = red;
+                    ctx.font = '700 12px Inter, sans-serif';
+                    ctx.fillText('KS 0.10', x + 8, chartArea.top + 14);
+                    ctx.restore();
+                }
+            }]
+        });
+
+        const retrainBtn = document.getElementById('retrainBtn');
+        const pipelineStatus = document.getElementById('pipelineStatus');
+        const logList = document.getElementById('logList');
+
+        retrainBtn.addEventListener('click', () => {
+            retrainBtn.disabled = true;
+            retrainBtn.classList.add('cursor-not-allowed', 'opacity-80');
+            retrainBtn.innerHTML = '<span class="loader"></span><span>Launching retraining pipeline...</span>';
+            pipelineStatus.classList.remove('hidden');
+
+            setTimeout(() => {
+                retrainBtn.classList.remove('opacity-80');
+                retrainBtn.classList.add('bg-navy', 'hover:bg-navyDark');
+                retrainBtn.classList.remove('bg-orange', 'hover:bg-[#d94f04]');
+                retrainBtn.innerHTML = '<i data-lucide="check-circle-2" class="h-5 w-5"></i><span>Pipeline Triggered Successfully</span>';
+                pipelineStatus.innerHTML = '<div class="flex items-center gap-3"><i data-lucide="check-circle-2" class="h-5 w-5 text-emerald-600"></i><span>Pipeline desplegado en Vertex AI / Cloud Run. Validación challenger en progreso.</span></div>';
+
+                const log = document.createElement('div');
+                log.className = 'rounded border border-orange/20 bg-orange/5 px-4 py-3 text-sm';
+                log.innerHTML = '<span class="font-bold text-navy">2026-06-19 13:58</span><span class="ml-2 text-slate-700">Automatic retraining pipeline triggered by MLOps Control Center.</span>';
+                logList.prepend(log);
+                lucide.createIcons();
+            }, 1800);
+        });
+
+        // Simulador de cambio de modelo
+        const dynamicData = typeof dashboardData !== 'undefined' ? dashboardData : null;
+        
+        const modelData = {
+            0: dynamicData ? {
+                roc: dynamicData.roc_auc.toFixed(4), trend: '<i data-lucide="zap" class="h-4 w-4"></i> Dynamic Data (pipeline)', trendColor: 'text-navy',
+                tn: dynamicData.tn, fp: dynamicData.fp, fn: dynamicData.fn, tp: dynamicData.tp,
+                costFp: dynamicData.costFp, descFp: dynamicData.fp + " rechazos erróneos",
+                costFn: dynamicData.costFn, descFn: dynamicData.fn + " defaults no detectados",
+                baseline: dynamicData.baseline,
+                challenger: dynamicData.challenger,
+                fairness_diff: dynamicData.fairness_diff
+            } : {
+                roc: "0.6289", trend: '<i data-lucide="arrow-down-right" class="h-4 w-4"></i> -0.3% vs v4', trendColor: 'text-red-700',
+                tn: "528", fp: "7,764", fn: "57", tp: "2,510",
+                costFp: "€20.96M", descFp: "7,764 rechazos erróneos",
+                costFn: "€0.77M", descFn: "57 defaults no detectados"
+            },
+            1: {
+                roc: "0.6033", trend: '<i data-lucide="arrow-down-right" class="h-4 w-4"></i> -3.7% vs v3', trendColor: 'text-red-700',
+                tn: "5,120", fp: "3,172", fn: "1,120", tp: "1,447",
+                costFp: "€8.56M", descFp: "3,172 rechazos erróneos",
+                costFn: "€15.12M", descFn: "1,120 defaults no detectados"
+            },
+            2: {
+                roc: "0.6266", trend: '<i data-lucide="minus" class="h-4 w-4"></i> Estable', trendColor: 'text-slate-500',
+                tn: "4,900", fp: "3,392", fn: "1,050", tp: "1,517",
+                costFp: "€9.15M", descFp: "3,392 rechazos erróneos",
+                costFn: "€14.17M", descFn: "1,050 defaults no detectados"
+            },
+            3: {
+                roc: "0.5890", trend: '<i data-lucide="arrow-down-right" class="h-4 w-4"></i> -6.0% vs v2', trendColor: 'text-red-700',
+                tn: "5,300", fp: "2,992", fn: "1,300", tp: "1,267",
+                costFp: "€8.07M", descFp: "2,992 rechazos erróneos",
+                costFn: "€17.55M", descFn: "1,300 defaults no detectados"
+            }
+        };
+
+        const modelSelector = document.getElementById('modelSelector');
+        
+        function updateDiff(id, base, chal) {
+            const el = document.getElementById(id);
+            if(!el) return;
+            const diff = chal - base;
+            el.innerText = (diff > 0 ? '+' : '') + diff.toFixed(4);
+            el.className = 'px-6 py-4 font-bold ' + (diff > 0 ? 'text-emerald-600' : 'text-red-600');
+        }
+
+        modelSelector.addEventListener('change', (e) => {
+            const data = modelData[e.target.selectedIndex] || modelData[0];
+            
+            document.getElementById('kpi-rocauc').innerText = data.roc;
+            document.getElementById('kpi-rocauc-trend').innerHTML = data.trend;
+            document.getElementById('kpi-rocauc-trend').className = 'mt-1 flex items-center gap-1 text-sm font-bold ' + data.trendColor;
+            
+            document.getElementById('tn-val').innerText = data.tn;
+            document.getElementById('fp-val').innerText = data.fp;
+            document.getElementById('fn-val').innerText = data.fn;
+            document.getElementById('tp-val').innerText = data.tp;
+            
+            document.getElementById('cost-fp').innerText = data.costFp;
+            document.getElementById('desc-fp').innerText = data.descFp;
+            document.getElementById('cost-fn').innerText = data.costFn;
+            document.getElementById('desc-fn').innerText = data.descFn;
+            
+            if (data.baseline && data.challenger) {
+                document.getElementById('cmp-base-roc').innerText = data.baseline.roc_auc.toFixed(4);
+                document.getElementById('cmp-chal-roc').innerText = data.challenger.roc_auc.toFixed(4);
+                updateDiff('cmp-diff-roc', data.baseline.roc_auc, data.challenger.roc_auc);
+                
+                document.getElementById('cmp-base-acc').innerText = data.baseline.accuracy.toFixed(4);
+                document.getElementById('cmp-chal-acc').innerText = data.challenger.accuracy.toFixed(4);
+                updateDiff('cmp-diff-acc', data.baseline.accuracy, data.challenger.accuracy);
+                
+                document.getElementById('cmp-base-pre').innerText = data.baseline.precision.toFixed(4);
+                document.getElementById('cmp-chal-pre').innerText = data.challenger.precision.toFixed(4);
+                updateDiff('cmp-diff-pre', data.baseline.precision, data.challenger.precision);
+                
+                document.getElementById('cmp-base-rec').innerText = data.baseline.recall.toFixed(4);
+                document.getElementById('cmp-chal-rec').innerText = data.challenger.recall.toFixed(4);
+                updateDiff('cmp-diff-rec', data.baseline.recall, data.challenger.recall);
+                
+                document.getElementById('cmp-base-f1').innerText = data.baseline.f1.toFixed(4);
+                document.getElementById('cmp-chal-f1').innerText = data.challenger.f1.toFixed(4);
+                updateDiff('cmp-diff-f1', data.baseline.f1, data.challenger.f1);
+            }
+            
+            if (data.fairness_diff) {
+                document.getElementById('kpi-fairness').innerText = data.fairness_diff;
+            }
+            
+            lucide.createIcons();
+        });
+
+        new Chart(document.getElementById('abTestChart'), {
+            type: 'line',
+            data: {
+                labels: dynamicData ? dynamicData.ab_test_labels : ['Week 1 (10%)', 'Week 5 (50%)', 'Week 9 (90%)'],
+                datasets: [
+                    {
+                        label: 'Business Cost (Millones €)',
+                        data: dynamicData ? dynamicData.ab_test_costs : [3.05, 2.30, 2.48],
+                        borderColor: orange,
+                        backgroundColor: 'rgba(242, 92, 5, 0.12)',
+                        fill: true,
+                        tension: 0.38,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', align: 'end' },
+                    tooltip: { backgroundColor: navy, padding: 12, cornerRadius: 4 }
+                },
+                scales: {
+                    y: {
+                        min: 2.0,
+                        max: 3.5,
+                        ticks: { callback: value => '€' + value.toFixed(1) + 'M' },
+                        grid: { color: 'rgba(148, 163, 184, 0.22)' }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Trigger change event to load dynamic data on start
+        modelSelector.dispatchEvent(new Event('change'));
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   # ---- Deteccion de secretos -------------------------------------
@@ -22,6 +23,8 @@ jobs:
           fetch-depth: 0
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Nota: en cuentas PERSONALES es gratis. Si algun dia mueves el
         # repo a una ORGANIZACION grande, gitleaks-action puede pedir
         # GITLEAKS_LICENSE.
