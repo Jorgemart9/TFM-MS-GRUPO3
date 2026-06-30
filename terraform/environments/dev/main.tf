@@ -1,15 +1,37 @@
+data "google_project" "current" {
+  project_id = var.project
+}
+
+resource "google_kms_key_ring" "storage" {
+  name     = "tfm-ms-grupo3-storage"
+  location = var.region
+}
+
+resource "google_kms_crypto_key" "storage_bucket" {
+  name            = "raw-landing-bucket"
+  key_ring        = google_kms_key_ring.storage.id
+  rotation_period = "7776000s"
+}
+
+resource "google_kms_crypto_key_iam_member" "storage_bucket" {
+  crypto_key_id = google_kms_crypto_key.storage_bucket.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
+}
+
 # Capa RAW: bucket de aterrizaje de datos crudos ("datos sucios" del diagrama).
 # El CSV original se sube aqui tal cual (comprimido en gzip). El procesado y la
 # carga a BigQuery se hacen en pasos posteriores del pipeline.
 module "raw_landing" {
   source = "../../modules/storage"
 
-  name          = var.raw_bucket_name
-  project       = var.project
-  location      = var.region
-  storage_class = "STANDARD"
-  versioning    = false # raw es reproducible desde origen: no versionamos para no duplicar coste
-  force_destroy = true  # dev: permite recrear/limpiar facilmente
+  name                 = var.raw_bucket_name
+  project              = var.project
+  location             = var.region
+  storage_class        = "STANDARD"
+  default_kms_key_name = google_kms_crypto_key.storage_bucket.id
+  versioning           = false # raw es reproducible desde origen: no versionamos para no duplicar coste
+  force_destroy        = true  # dev: permite recrear/limpiar facilmente
 
   # Abaratar el coste de almacenamiento del crudo a medida que envejece:
   # tras 30 dias -> Nearline, tras 90 -> Coldline. (1 GB en Standard ya cuesta
@@ -24,4 +46,8 @@ module "raw_landing" {
     capa     = "raw"
     entorno  = "dev"
   }
+
+  depends_on = [
+    google_kms_crypto_key_iam_member.storage_bucket,
+  ]
 }

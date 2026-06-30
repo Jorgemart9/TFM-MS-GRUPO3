@@ -1,9 +1,23 @@
-pandas
-numpy
+# ---------------------------------------------------------------------------
+# Dependencias del pipeline v7 (Credit Risk MLOps)
+# ---------------------------------------------------------------------------
+# Core ML / tracking
+mlflow
 scikit-learn
 xgboost
+lightgbm
+catboost            # challenger del v7 (opcional: hay fallback a XGBoost)
+
+# Interpretabilidad y equidad
 shap
-matplotlib
-seaborn
+fairlearn
+
+# Datos y utilidades
+pandas
+numpy
 scipy
 joblib
+
+# Gráficas (SHAP / reporting)
+matplotlib
+seaborn

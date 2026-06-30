@@ -92,3 +92,16 @@ metrics/
 __pycache__/
 *.pkl
 *.csv
+
+# =====================================================================
+#  MLOPS GENERADOS (pipeline v7) — se regeneran al ejecutar el pipeline
+# =====================================================================
+mlruns/
+mlflow.db
+*.db
+catboost_info/
+TFM/artifacts/
+artifacts_v*/
+
+# Carpeta temporal de descarte (revisión manual antes de borrar)
+_basura/

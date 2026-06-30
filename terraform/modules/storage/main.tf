@@ -8,6 +8,10 @@ resource "google_storage_bucket" "this" {
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
 
+  encryption {
+    default_kms_key_name = var.default_kms_key_name
+  }
+
   # En dev permitimos que Terraform borre el bucket con objetos dentro.
   force_destroy = var.force_destroy
 
