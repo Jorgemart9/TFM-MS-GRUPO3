@@ -65,6 +65,8 @@ htmlcov/
 # =====================================================================
 data/
 *.csv
+*.csv.gz
+*.gz
 *.parquet
 # Si quieres versionar una muestra pequeña, ponla en sample_data/ y
 # descomenta la siguiente linea:
