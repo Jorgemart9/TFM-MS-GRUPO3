@@ -2,7 +2,7 @@
 
 Sistema de **Machine Learning en producción** para la predicción de **Probabilidad de Default (PD)** en carteras de crédito al consumo, con gobierno de modelos, explicabilidad SHAP y despliegue en Google Cloud Vertex AI. Desarrollado bajo los estándares metodológicos de Basilea III.
 
----
+--
 
 ## 📂 Estructura del Proyecto
 
