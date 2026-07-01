@@ -1,0 +1,888 @@
+{
+    "dimensions": {
+        "total_rows_raw_est": 3368470,
+        "sample_rows": 336847,
+        "total_columns": 47,
+        "filtered_rows": 2061309
+    },
+    "nulls": {
+        "puntuacion_crediticia_min": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "puntuacion_crediticia_max": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "importe_solicitado": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "importe_financiado": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "ratio_prestamo_ingresos": {
+            "nulos": 37105,
+            "porcentaje": 11.02
+        },
+        "tipo_interes": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "plazo_prestamo": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "antiguedad_laboral": {
+            "nulos": 28036,
+            "porcentaje": 8.32
+        },
+        "ingresos_anuales": {
+            "nulos": 9419,
+            "porcentaje": 2.8
+        },
+        "finalidad_prestamo": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "estado_prestamo": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "cuota_mensual": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "estado_verificacion_ingresos": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "fecha_emision": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "plan_pagos_activo": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "impago_ultimos_2_anios": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "fecha_primera_linea_credito": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "consultas_credito_ultimos_6_meses": {
+            "nulos": 1,
+            "porcentaje": 0.0
+        },
+        "lineas_credito_abiertas": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "registros_publicos_negativos": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "saldo_credito_revolving": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "porcentaje_uso_credito_revolving": {
+            "nulos": 233,
+            "porcentaje": 0.07
+        },
+        "total_lineas_credito": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "capital_pendiente": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "total_pagado": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "capital_pagado": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "intereses_pagados": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "fecha_ultimo_pago": {
+            "nulos": 487,
+            "porcentaje": 0.14
+        },
+        "importe_ultimo_pago": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "fecha_proximo_pago": {
+            "nulos": 163281,
+            "porcentaje": 48.47
+        },
+        "tipo_solicitud": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "cuentas_hipotecarias": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "bancarrotas_publicas": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "grado_riesgo": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "tipo_vivienda": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "puntuacion_crediticia_media": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "importe_no_financiado": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "ratio_financiacion": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "plazo_meses": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "antiguedad_laboral_num": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "grado_riesgo_num": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "cuota_mensual_estimada": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "ratio_carga_financiera": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "ingreso_residual_anual": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "alerta_sobreendeudamiento": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "ingresos_anuales_log": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        },
+        "importe_solicitado_log": {
+            "nulos": 0,
+            "porcentaje": 0.0
+        }
+    },
+    "estado_prestamo_distribution": [
+        {
+            "label": "Pagado completamente",
+            "count": 163439,
+            "percentage": 48.52
+        },
+        {
+            "label": "Al corriente",
+            "count": 128648,
+            "percentage": 38.19
+        },
+        {
+            "label": "Incobrable",
+            "count": 40823,
+            "percentage": 12.12
+        },
+        {
+            "label": "Retraso de 31 a 120 d\u00edas",
+            "count": 1949,
+            "percentage": 0.58
+        },
+        {
+            "label": "Periodo de gracia",
+            "count": 1322,
+            "percentage": 0.39
+        },
+        {
+            "label": "Retraso de 16 a 30 d\u00edas",
+            "count": 354,
+            "percentage": 0.11
+        },
+        {
+            "label": "Reci\u00e9n emitido",
+            "count": 261,
+            "percentage": 0.08
+        },
+        {
+            "label": "Default",
+            "count": 51,
+            "percentage": 0.02
+        }
+    ],
+    "target_distribution": [
+        {
+            "label": "Solvente (Clase 0)",
+            "count": 163211,
+            "percentage": 79.18
+        },
+        {
+            "label": "Impago/Default (Clase 1)",
+            "count": 42920,
+            "percentage": 20.82
+        }
+    ],
+    "descriptive_stats": {
+        "importe_solicitado": {
+            "count": 206131,
+            "mean": 14967.9,
+            "std": 9476.86,
+            "min": 820.15,
+            "median": 12500.0,
+            "max": 104697.99
+        },
+        "ingresos_anuales": {
+            "count": 204957,
+            "mean": 154361.36,
+            "std": 339891.1,
+            "min": 0.0,
+            "median": 65000.0,
+            "max": 9550000.0
+        },
+        "ratio_prestamo_ingresos": {
+            "count": 185997,
+            "mean": 0.23,
+            "std": 2.77,
+            "min": 0.0,
+            "median": 0.18,
+            "max": 825.55
+        },
+        "puntuacion_crediticia_media": {
+            "count": 206131,
+            "mean": 696.93,
+            "std": 33.61,
+            "min": 583.62,
+            "median": 691.5,
+            "max": 847.5
+        },
+        "bancarrotas_publicas": {
+            "count": 206131,
+            "mean": 0.14,
+            "std": 0.38,
+            "min": 0.0,
+            "median": 0.0,
+            "max": 9.0
+        },
+        "consultas_credito_ultimos_6_meses": {
+            "count": 206131,
+            "mean": 0.71,
+            "std": 1.05,
+            "min": 0.0,
+            "median": 0.0,
+            "max": 13.0
+        },
+        "impago_ultimos_2_anios": {
+            "count": 206131,
+            "mean": 0.46,
+            "std": 1.05,
+            "min": 0.0,
+            "median": 0.0,
+            "max": 22.0
+        },
+        "tipo_interes": {
+            "count": 206131,
+            "mean": 13.07,
+            "std": 4.87,
+            "min": 5.31,
+            "median": 12.62,
+            "max": 30.99
+        },
+        "porcentaje_uso_credito_revolving": {
+            "count": 206011,
+            "mean": 49.55,
+            "std": 24.73,
+            "min": 0.0,
+            "median": 49.2,
+            "max": 152.5
+        },
+        "plazo_meses": {
+            "count": 206131,
+            "mean": 43.04,
+            "std": 10.93,
+            "min": 36.0,
+            "median": 36.0,
+            "max": 60.0
+        },
+        "antiguedad_laboral_num": {
+            "count": 206131,
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+        },
+        "grado_riesgo_num": {
+            "count": 206131,
+            "mean": 2.82,
+            "std": 1.39,
+            "min": 1.0,
+            "median": 3.0,
+            "max": 7.0
+        },
+        "cuota_mensual_estimada": {
+            "count": 206131,
+            "mean": 398.09,
+            "std": 250.96,
+            "min": 14.87,
+            "median": 329.79,
+            "max": 2605.78
+        },
+        "ratio_carga_financiera": {
+            "count": 206131,
+            "mean": 455.82,
+            "std": 1704.27,
+            "min": 0.0,
+            "median": 0.06,
+            "max": 20056.66
+        },
+        "ingreso_residual_anual": {
+            "count": 206131,
+            "mean": 148705.09,
+            "std": 338943.05,
+            "min": -27660.81,
+            "median": 59923.29,
+            "max": 9543526.6
+        },
+        "alerta_sobreendeudamiento": {
+            "count": 206131,
+            "mean": 0.33,
+            "std": 0.56,
+            "min": 0.0,
+            "median": 0.0,
+            "max": 10.01
+        },
+        "ingresos_anuales_log": {
+            "count": 206131,
+            "mean": 10.23,
+            "std": 3.49,
+            "min": 0.0,
+            "median": 11.08,
+            "max": 16.07
+        },
+        "importe_solicitado_log": {
+            "count": 206131,
+            "mean": 9.39,
+            "std": 0.72,
+            "min": 6.71,
+            "median": 9.43,
+            "max": 11.56
+        }
+    },
+    "categorical_distribution": {
+        "grado_riesgo": [
+            {
+                "label": "C",
+                "count": 80693,
+                "percentage": 23.96
+            },
+            {
+                "label": "B",
+                "count": 77366,
+                "percentage": 22.97
+            },
+            {
+                "label": "A",
+                "count": 52098,
+                "percentage": 15.47
+            },
+            {
+                "label": "D",
+                "count": 49441,
+                "percentage": 14.68
+            },
+            {
+                "label": "E",
+                "count": 32116,
+                "percentage": 9.53
+            },
+            {
+                "label": "F",
+                "count": 23968,
+                "percentage": 7.12
+            },
+            {
+                "label": "G",
+                "count": 21165,
+                "percentage": 6.28
+            }
+        ],
+        "finalidad_prestamo": [
+            {
+                "label": "Consolidaci\u00f3n de deuda",
+                "count": 148391,
+                "percentage": 44.05
+            },
+            {
+                "label": "Tarjeta de cr\u00e9dito",
+                "count": 62292,
+                "percentage": 18.49
+            },
+            {
+                "label": "Otros",
+                "count": 27245,
+                "percentage": 8.09
+            },
+            {
+                "label": "Mejora del hogar",
+                "count": 21672,
+                "percentage": 6.43
+            },
+            {
+                "label": "Peque\u00f1o negocio",
+                "count": 20412,
+                "percentage": 6.06
+            },
+            {
+                "label": "Gastos m\u00e9dicos",
+                "count": 16456,
+                "percentage": 4.89
+            },
+            {
+                "label": "Compra importante",
+                "count": 10198,
+                "percentage": 3.03
+            },
+            {
+                "label": "Coche",
+                "count": 7058,
+                "percentage": 2.1
+            },
+            {
+                "label": "Vacaciones",
+                "count": 6203,
+                "percentage": 1.84
+            },
+            {
+                "label": "Mudanza",
+                "count": 6180,
+                "percentage": 1.83
+            },
+            {
+                "label": "Vivienda",
+                "count": 6125,
+                "percentage": 1.82
+            },
+            {
+                "label": "Energ\u00eda renovable",
+                "count": 4614,
+                "percentage": 1.37
+            },
+            {
+                "label": "Boda",
+                "count": 1,
+                "percentage": 0.0
+            }
+        ]
+    },
+    "correlation": {
+        "columns": [
+            "importe_solicitado",
+            "ingresos_anuales",
+            "ratio_prestamo_ingresos",
+            "puntuacion_crediticia_media",
+            "bancarrotas_publicas",
+            "consultas_credito_ultimos_6_meses",
+            "impago_ultimos_2_anios",
+            "tipo_interes",
+            "porcentaje_uso_credito_revolving",
+            "plazo_meses",
+            "antiguedad_laboral_num",
+            "grado_riesgo_num",
+            "cuota_mensual_estimada",
+            "ratio_carga_financiera",
+            "ingreso_residual_anual",
+            "alerta_sobreendeudamiento",
+            "ingresos_anuales_log",
+            "importe_solicitado_log"
+        ],
+        "matrix": [
+            [
+                1.0,
+                0.05,
+                0.03,
+                0.068,
+                -0.092,
+                0.041,
+                0.052,
+                0.098,
+                0.082,
+                0.333,
+                0,
+                0.136,
+                0.909,
+                0.022,
+                0.043,
+                0.059,
+                0.23,
+                0.915
+            ],
+            [
+                0.05,
+                1.0,
+                -0.025,
+                0.028,
+                -0.008,
+                0.001,
+                0.015,
+                -0.022,
+                0.006,
+                0.006,
+                0,
+                -0.043,
+                0.069,
+                -0.024,
+                1.0,
+                0.017,
+                0.823,
+                0.045
+            ],
+            [
+                0.03,
+                -0.025,
+                1.0,
+                -0.002,
+                -0.003,
+                0.005,
+                0.004,
+                0.013,
+                -0.005,
+                0.018,
+                0,
+                0.018,
+                0.024,
+                0.991,
+                -0.025,
+                0.002,
+                -0.088,
+                0.03
+            ],
+            [
+                0.068,
+                0.028,
+                -0.002,
+                1.0,
+                -0.196,
+                -0.179,
+                -0.237,
+                -0.338,
+                -0.379,
+                -0.068,
+                0,
+                -0.38,
+                0.075,
+                -0.001,
+                0.027,
+                -0.254,
+                0.068,
+                0.059
+            ],
+            [
+                -0.092,
+                -0.008,
+                -0.003,
+                -0.196,
+                1.0,
+                0.074,
+                -0.048,
+                0.05,
+                -0.07,
+                -0.015,
+                0,
+                0.046,
+                -0.088,
+                -0.003,
+                -0.008,
+                0.044,
+                -0.034,
+                -0.08
+            ],
+            [
+                0.041,
+                0.001,
+                0.005,
+                -0.179,
+                0.074,
+                1.0,
+                0.195,
+                0.153,
+                -0.103,
+                0.14,
+                0,
+                0.297,
+                -0.003,
+                0.001,
+                0.001,
+                0.827,
+                0.004,
+                0.019
+            ],
+            [
+                0.052,
+                0.015,
+                0.004,
+                -0.237,
+                -0.048,
+                0.195,
+                1.0,
+                0.048,
+                -0.034,
+                0.116,
+                0,
+                0.192,
+                0.011,
+                0.0,
+                0.015,
+                0.145,
+                0.025,
+                0.031
+            ],
+            [
+                0.098,
+                -0.022,
+                0.013,
+                -0.338,
+                0.05,
+                0.153,
+                0.048,
+                1.0,
+                0.197,
+                0.322,
+                0,
+                0.738,
+                0.035,
+                0.009,
+                -0.022,
+                0.19,
+                -0.072,
+                0.082
+            ],
+            [
+                0.082,
+                0.006,
+                -0.005,
+                -0.379,
+                -0.07,
+                -0.103,
+                -0.034,
+                0.197,
+                1.0,
+                0.03,
+                0,
+                0.149,
+                0.09,
+                -0.005,
+                0.005,
+                0.218,
+                0.043,
+                0.093
+            ],
+            [
+                0.333,
+                0.006,
+                0.018,
+                -0.068,
+                -0.015,
+                0.14,
+                0.116,
+                0.322,
+                0.03,
+                1.0,
+                0,
+                0.413,
+                -0.035,
+                -0.001,
+                0.006,
+                0.114,
+                0.041,
+                0.34
+            ],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            [
+                0.136,
+                -0.043,
+                0.018,
+                -0.38,
+                0.046,
+                0.297,
+                0.192,
+                0.738,
+                0.149,
+                0.413,
+                0,
+                1.0,
+                0.019,
+                0.01,
+                -0.043,
+                0.277,
+                -0.101,
+                0.105
+            ],
+            [
+                0.909,
+                0.069,
+                0.024,
+                0.075,
+                -0.088,
+                -0.003,
+                0.011,
+                0.035,
+                0.09,
+                -0.035,
+                0,
+                0.019,
+                1.0,
+                0.025,
+                0.06,
+                0.028,
+                0.243,
+                0.846
+            ],
+            [
+                0.022,
+                -0.024,
+                0.991,
+                -0.001,
+                -0.003,
+                0.001,
+                0.0,
+                0.009,
+                -0.005,
+                -0.001,
+                0,
+                0.01,
+                0.025,
+                1.0,
+                -0.024,
+                -0.001,
+                -0.083,
+                0.024
+            ],
+            [
+                0.043,
+                1.0,
+                -0.025,
+                0.027,
+                -0.008,
+                0.001,
+                0.015,
+                -0.022,
+                0.005,
+                0.006,
+                0,
+                -0.043,
+                0.06,
+                -0.024,
+                1.0,
+                0.017,
+                0.822,
+                0.038
+            ],
+            [
+                0.059,
+                0.017,
+                0.002,
+                -0.254,
+                0.044,
+                0.827,
+                0.145,
+                0.19,
+                0.218,
+                0.114,
+                0,
+                0.277,
+                0.028,
+                -0.001,
+                0.017,
+                1.0,
+                0.034,
+                0.043
+            ],
+            [
+                0.23,
+                0.823,
+                -0.088,
+                0.068,
+                -0.034,
+                0.004,
+                0.025,
+                -0.072,
+                0.043,
+                0.041,
+                0,
+                -0.101,
+                0.243,
+                -0.083,
+                0.822,
+                0.034,
+                1.0,
+                0.22
+            ],
+            [
+                0.915,
+                0.045,
+                0.03,
+                0.059,
+                -0.08,
+                0.019,
+                0.031,
+                0.082,
+                0.093,
+                0.34,
+                0,
+                0.105,
+                0.846,
+                0.024,
+                0.038,
+                0.043,
+                0.22,
+                1.0
+            ]
+        ]
+    }
+}
