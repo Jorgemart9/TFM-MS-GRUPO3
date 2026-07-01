@@ -99,6 +99,7 @@ parser.add_argument("--gcp-project", type=str, default=None, help="ID del Proyec
 parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP (por ejemplo, europe-west1)")
 parser.add_argument("--gcs-bucket", type=str, default=None, help="Bucket de GCS para almacenar los artefactos del modelo")
 parser.add_argument("--experiment-name", type=str, default="credit-risk-mvp", help="Nombre del experimento en Vertex AI")
+parser.add_argument("--grid-search", action="store_true", help="Activar la búsqueda de hiperparámetros (RandomizedSearchCV) en lugar de usar parámetros predefinidos")
 
 args = parser.parse_args()
 
@@ -305,26 +306,62 @@ for model_name, config in models.items():
         ('classifier', config["model"])
     ])
     
-    # Grid/Randomized Search para este modelo (optimizado para F1-Score)
-    # Se ajusta sobre X_train_base/y_train_base para separar la calibración
-    # Optimización dinámica del número de iteraciones y folds en datasets grandes
-    n_iter_search = 20
-    cv_search = 3
-    
-    search = RandomizedSearchCV(
-        pipeline,
-        param_distributions=config["params"],
-        n_iter=n_iter_search, 
-        cv=cv_search,
-        scoring='f1',
-        n_jobs=-1,
-        random_state=42
-    )
-    
-    search.fit(X_train_base, y_train_base)
-    
-    best_pipeline = search.best_estimator_
-    best_params = search.best_params_
+    # Búsqueda condicional de hiperparámetros o entrenamiento directo (congelado)
+    if args.grid_search:
+        print(f"[*] Ejecutando búsqueda de hiperparámetros con RandomizedSearchCV (20 iteraciones, 3 folds)...")
+        search = RandomizedSearchCV(
+            pipeline,
+            param_distributions=config["params"],
+            n_iter=20, 
+            cv=3,
+            scoring='f1',
+            n_jobs=-1,
+            random_state=42
+        )
+        search.fit(X_train_base, y_train_base)
+        best_pipeline = search.best_estimator_
+        best_params = search.best_params_
+    else:
+        print(f"[*] Entrenando directamente con los hiperparámetros óptimos conocidos (ahorro de costes en Vertex AI)...")
+        if model_name == "CatBoost":
+            optimal_params = {
+                "classifier__subsample": 0.8,
+                "classifier__scale_pos_weight": spw,
+                "classifier__learning_rate": 0.01,
+                "classifier__l2_leaf_reg": 1,
+                "classifier__iterations": 800,
+                "classifier__depth": 8
+            }
+        elif model_name == "LightGBM":
+            optimal_params = {
+                "classifier__subsample": 0.9,
+                "classifier__scale_pos_weight": spw,
+                "classifier__reg_lambda": 1.0,
+                "classifier__reg_alpha": 0.0,
+                "classifier__num_leaves": 31,
+                "classifier__n_estimators": 800,
+                "classifier__min_child_samples": 50,
+                "classifier__max_depth": -1,
+                "classifier__learning_rate": 0.01,
+                "classifier__colsample_bytree": 0.9
+            }
+        else: # XGBoost
+            optimal_params = {
+                "classifier__subsample": 0.9,
+                "classifier__scale_pos_weight": spw,
+                "classifier__reg_lambda": 10.0,
+                "classifier__reg_alpha": 0.0,
+                "classifier__n_estimators": 300,
+                "classifier__min_child_weight": 5,
+                "classifier__max_depth": 6,
+                "classifier__learning_rate": 0.05,
+                "classifier__gamma": 0.0,
+                "classifier__colsample_bytree": 0.8
+            }
+        pipeline.set_params(**optimal_params)
+        pipeline.fit(X_train_base, y_train_base)
+        best_pipeline = pipeline
+        best_params = optimal_params
     
     # Extraemos el preprocesador y el clasificador del mejor pipeline
     preprocessor_step = best_pipeline.named_steps['preprocessor']
