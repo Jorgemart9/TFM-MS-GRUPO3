@@ -11,7 +11,7 @@ resource "google_storage_bucket" "input_bucket" {
 }
 
 resource "google_storage_bucket_object" "csv_inicial" {
-  name   = "datos_sucios.csv" # El nombre que conservará dentro de los buckets de Google Cloud
+  name   = "df_completo_cr.csv" # El nombre que conservará dentro de los buckets de Google Cloud
   bucket = google_storage_bucket.input_bucket.name
 
   # SOLUCIÓN: Ruta absoluta usando barras inclinadas hacia la derecha ( format compatible )

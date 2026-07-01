@@ -1,15 +1,4 @@
-locals {
-  env_vars = {
-    # Agregamos .. para salir de la carpeta actual hacia la raíz del proyecto
-    for line in split("\n", file("${path.module}/../preprocess/.env")) :
-    split("=", line)[0] => split("=", line)[1]
-    if length(regexall("^[^#=]+=.+", line)) > 0
-  }
-}
-
-# =====================================================================
 # 1. Servicio de Preprocesamiento (Cloud Run Job)
-# =====================================================================
 resource "google_cloud_run_v2_job" "preprocess_job" {
   name     = "preprocess"
   location = var.region
@@ -21,22 +10,43 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
       containers {
         # Ajustado a 'preprocess-pipeline' según tu docker push real
         image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.preprocess_repo.name}/preprocess-pipeline:latest"
-
-        # SOLUCCIÓN AL OUT OF MEMORY: Ampliación de recursos
-        resources {
-          limits = {
-            cpu    = "2000m" # 2 vCPUs
-            memory = "2Gi"   # 2 Gigabytes de RAM
-          }
+        env {
+          name  = "GCP_PROJECT_ID"
+          value = var.project_id
         }
 
-        # Carga dinámica de las variables del .env
-        dynamic "env" {
-          for_each = local.env_vars
-          content {
-            name  = env.key
-            value = trimspace(env.value)
-          }
+        env {
+          name  = "INPUT_BUCKET"
+          value = "raw-data-tfm" # Solo el nombre plano que pide tu os.environ["INPUT_BUCKET"]
+        }
+        env {
+          name  = "OUTPUT_BUCKET"
+          value = "clean-data-tfm" # Solo el nombre plano para tu salida
+        }
+
+        env {
+          name  = "INPUT_PATH"
+          value="gs://raw-data-tfm/df_completo_cr.csv"
+        }
+        env {
+          name  = "OUTPUT_CLEAN_PATH"
+          value = "gs://clean-data-tfm/df_completo_cr_clean.csv"
+        }
+        env {
+          name  = "OUTPUT_EDA_PATH"
+          value = "gs://clean-data-tfm/eda_results.json"
+        }
+        env {
+          name  = "PROJECT_ID"
+          value = var.project_id
+        }
+        env {
+          name  = "REGION"
+          value = var.region
+        }
+        env {
+          name  = "SAMPLE_FRACTION"
+          value = "0.10" # Puedes convertir esto también en una variable de Terraform si quieres
         }
       }
     }

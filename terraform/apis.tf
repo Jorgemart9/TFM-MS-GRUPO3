@@ -5,10 +5,7 @@ variable "gcp_apis" {
     "compute.googleapis.com",
     "servicenetworking.googleapis.com",
     "secretmanager.googleapis.com",
-    "sqladmin.googleapis.com",
-    "datastream.googleapis.com",
     "bigquery.googleapis.com",
-    "dataflow.googleapis.com",
     "run.googleapis.com",
     "aiplatform.googleapis.com",
     "cloudfunctions.googleapis.com" # Añadida para la función de trigger

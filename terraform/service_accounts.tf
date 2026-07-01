@@ -15,9 +15,3 @@ resource "google_service_account" "sa_monitoring" {
   account_id   = "sa-monitoring"
   display_name = "Identity for Monitoring Cloud Run Service"
 }
-
-#Cuenta de servicio para Dataflow
-resource "google_service_account" "sa_dataflow" {
-  account_id   = "sa-dataflow"
-  display_name = "Identity for  Dataflow Workers"
-}
