@@ -37,3 +37,11 @@ resource "google_service_account_iam_member" "github_wif_binding" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/jorgemart9/TFM-MS-GRUPO3"
 }
+
+resource "google_artifact_registry_repository_iam_member" "github_writer" {
+  project    = "tfm-ms-3"
+  location   = "europe-west1"
+  repository = "preprocess-repo" # Hazlo también para dash-repo y monitoring-repo si los tienes separados
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
+}
