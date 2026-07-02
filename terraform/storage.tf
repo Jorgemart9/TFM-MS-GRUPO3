@@ -10,13 +10,10 @@ resource "google_storage_bucket" "input_bucket" {
   depends_on                  = [google_project_service.enabled_apis]
 }
 
-resource "google_storage_bucket_object" "csv_inicial" {
-  name   = "df_completo_cr.csv" # El nombre que conservará dentro de los buckets de Google Cloud
-  bucket = google_storage_bucket.input_bucket.name
-
-  # SOLUCIÓN: Ruta absoluta usando barras inclinadas hacia la derecha ( format compatible )
-  source = "C:/Users/gbala/Desktop/BDD Data Drift 2/df_completo_cr.csv"
-}
+# NOTA: la carga del CSV inicial NO vive en Terraform. Antes habia aqui un
+# google_storage_bucket_object con una ruta local absoluta de una maquina
+# concreta, que rompia cualquier `terraform plan/apply` en CI. La ingesta de
+# datos se hace fuera del IaC (subida manual / pipeline de datos).
 
 # Bucket para datos limpios e intermedios
 resource "google_storage_bucket" "output_bucket" {

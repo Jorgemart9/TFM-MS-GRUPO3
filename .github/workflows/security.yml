@@ -59,8 +59,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install ruff pytest
+      # pandas/numpy hacen falta para que pytest pueda IMPORTAR los modulos
+      # de test durante la fase de coleccion sin romperse.
+      - run: pip install ruff pytest pandas numpy
       - name: lint
         run: ruff check .
       - name: tests
-        run: pytest -q || true   # quita "|| true" cuando tengais tests reales
+        # pytest devuelve codigo 5 cuando NO hay tests que recoger (hoy no hay
+        # tests unitarios reales, solo scripts de validacion). Toleramos ese
+        # caso concreto, pero un fallo de test real (codigo 1) SI rompe el CI.
+        run: |
+          set +e
+          pytest -q
+          code=$?
+          set -e
+          if [ $code -eq 5 ]; then
+            echo "No hay tests que recoger; se considera OK."
+            exit 0
+          fi
+          exit $code
