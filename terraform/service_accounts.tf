@@ -15,3 +15,5 @@ resource "google_service_account" "sa_monitoring" {
   account_id   = "sa-monitoring"
   display_name = "Identity for Monitoring Cloud Run Service"
 }
+
+

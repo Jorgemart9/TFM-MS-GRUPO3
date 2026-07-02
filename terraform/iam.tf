@@ -64,3 +64,4 @@ resource "google_storage_bucket_iam_member" "preprocess_write_clean" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
 }
+
