@@ -65,3 +65,24 @@ resource "google_storage_bucket_iam_member" "preprocess_write_clean" {
   member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
 }
 
+#PERMISO CI 
+# 1. Dar permiso a la cuenta de despliegue de GitHub para gestionar Cloud Run
+resource "google_project_iam_member" "github_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:sa-github-deployer@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# 2. Dar permiso para actuar como las cuentas de servicio de cada contenedor
+resource "google_project_iam_member" "github_sa_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:sa-github-deployer@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# 3. Dar permiso para escribir en Artifact Registry (Subir las imágenes)
+resource "google_project_iam_member" "github_artifact_registry" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:sa-github-deployer@${var.project_id}.iam.gserviceaccount.com"
+}
