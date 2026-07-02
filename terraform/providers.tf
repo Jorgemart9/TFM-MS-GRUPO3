@@ -6,11 +6,12 @@ terraform {
       version = "~> 5.0"
     }
   }
-  # Configura tu backend remoto aquí para producción (GCS)
-  # backend "gcs" {
-  #   bucket  = "bucket-datos-sucios"
-  #   prefix  = "terraform/state"
-  # }
+  # Estado remoto compartido en GCS. Mismo bucket que environments/dev
+  # (gs://tfm-ms-3-tfstate) pero con prefix distinto para no colisionar.
+  backend "gcs" {
+    bucket = "tfm-ms-3-tfstate"
+    prefix = "tfm/app"
+  }
 }
 
 provider "google" {

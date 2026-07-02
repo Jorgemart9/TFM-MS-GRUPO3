@@ -26,7 +26,7 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
 
         env {
           name  = "INPUT_PATH"
-          value="gs://raw-data-tfm/df_completo_cr.csv"
+          value = "gs://raw-data-tfm/df_completo_cr.csv"
         }
         env {
           name  = "OUTPUT_CLEAN_PATH"
