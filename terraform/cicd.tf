@@ -38,10 +38,8 @@ resource "google_service_account_iam_member" "github_wif_binding" {
   member             = "principalSet://iam.googleapis.com/projects/1076362823794/locations/global/workloadIdentityPools/github/*"
 }
 
-resource "google_artifact_registry_repository_iam_member" "github_writer" {
-  project    = "tfm-ms-3"
-  location   = "europe-west1"
-  repository = "preprocess-repo" # Hazlo también para dash-repo y monitoring-repo si los tienes separados
-  role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
+resource "google_project_iam_member" "github_deployer_artifact_writer" {
+  project = "tfm-ms-3"
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
 }
