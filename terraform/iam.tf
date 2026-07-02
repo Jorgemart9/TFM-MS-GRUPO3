@@ -53,6 +53,12 @@ resource "google_project_iam_member" "monitoring_bq_viewer" {
   member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
+resource "google_storage_bucket_iam_member" "bigquery_storage_reader" {
+  bucket = "clean-data-tfm"
+  role   = "roles/storage.objectViewer" # Permiso de lectura de objetos básico y seguro
+  member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
+}
+
 resource "google_storage_bucket_iam_member" "preprocess_write_clean" {
   bucket = "clean-data-tfm"
   role   = "roles/storage.objectAdmin"
