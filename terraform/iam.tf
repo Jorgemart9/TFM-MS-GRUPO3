@@ -65,24 +65,3 @@ resource "google_storage_bucket_iam_member" "preprocess_write_clean" {
   member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
 }
 
-#PERMISO CI 
-resource "google_project_iam_member" "github_run_admin" {
-  project = var.project_id
-  role    = "roles/run.admin"
-  
-  member  = "serviceAccount:${google_service_account.github_deployer.email}"
-}
-
-resource "google_project_iam_member" "github_sa_user" {
-  project = var.project_id
-  role    = "roles/iam.serviceAccountUser"
-  
-  member  = "serviceAccount:${google_service_account.github_deployer.email}"
-}
-
-resource "google_project_iam_member" "github_artifact_registry" {
-  project = var.project_id
-  role    = "roles/artifactregistry.writer"
-  
-  member  = "serviceAccount:${google_service_account.github_deployer.email}"
-}
