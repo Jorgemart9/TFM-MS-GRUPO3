@@ -35,7 +35,7 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
 resource "google_service_account_iam_member" "github_wif_binding" {
   service_account_id = google_service_account.github_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/jorgemart9/TFM-MS-GRUPO3"
+  member             = "principalSet://iam.googleapis.com/projects/1076362823794/locations/global/workloadIdentityPools/github/*"
 }
 
 resource "google_artifact_registry_repository_iam_member" "github_writer" {
