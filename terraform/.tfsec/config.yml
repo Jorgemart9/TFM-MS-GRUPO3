@@ -1,0 +1,10 @@
+# Configuracion de tfsec para el job "iac-seguridad" de security.yml.
+# tfsec lee este fichero automaticamente al escanear ./terraform.
+#
+# Excluimos comprobaciones de POLITICA (no vulnerabilidades reales) que son
+# ruido para un TFM: cifrado con clave gestionada por el cliente (CMEK) y
+# logging de acceso en los buckets GCS. No son secretos ni fallos de
+# configuracion peligrosos; es la estrictez por defecto de la herramienta.
+exclude:
+  - google-storage-bucket-encryption-customer-key
+  - google-storage-enable-logging

@@ -8,3 +8,9 @@ variable "region" {
   default     = "europe-west1"
   description = "Región por defecto para los recursos"
 }
+
+variable "github_repository" {
+  type        = string
+  default     = "Jorgemart9/TFM-MS-GRUPO3"
+  description = "Repositorio (owner/repo) autorizado a federar identidad con GCP vía WIF."
+}

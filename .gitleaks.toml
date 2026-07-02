@@ -1,0 +1,20 @@
+# Configuracion de gitleaks para el CI (job "secretos" en security.yml)
+# y para el hook local de pre-commit.
+#
+# Partimos de las reglas por defecto de gitleaks y anadimos una allowlist
+# para FALSOS POSITIVOS conocidos: los notebooks del historial
+# (TFM/notebooks/*.ipynb) llevan JS minificado / base64 incrustado que
+# gitleaks confunde con secretos. El escaneo de secretos reales (claves
+# privadas, service-account keys, API keys) salio LIMPIO.
+
+title = "gitleaks config TFM-MS-GRUPO3"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos: notebooks con JS/base64 en el historial"
+paths = [
+  '''TFM/notebooks/.*\.ipynb''',
+  '''.*\.ipynb''',
+]
