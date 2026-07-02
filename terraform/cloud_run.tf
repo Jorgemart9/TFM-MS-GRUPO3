@@ -1,3 +1,4 @@
+# 1. Servicio de Preprocesamiento (Cloud Run Job)
 resource "google_cloud_run_v2_job" "preprocess_job" {
   name     = "preprocess"
   location = var.region
@@ -7,25 +8,46 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
       service_account = google_service_account.sa_preprocess.email
 
       containers {
+        # Ajustado a 'preprocess-pipeline' según tu docker push real
         image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.preprocess_repo.name}/preprocess-pipeline:latest"
-
-        resources {
-          limits = {
-            cpu    = "2"
-            memory = "8Gi" # 👈 Subido a 8Gi para evitar OOM con el archivo de 1GB
-          }
+        env {
+          name  = "GCP_PROJECT_ID"
+          value = var.project_id
         }
 
-        # 🚀 EL TRUCO: Mapea las variables a los argumentos que tu script de Python parsea
-        args = [
-          "--input-path", "gs://raw-data-tfm/df_completo_cr.csv",
-          "--output-clean-path", "gs://clean-data-tfm/df_completo_cr_clean.csv",
-          "--output-eda-path", "gs://clean-data-tfm/eda_results.json",
-          "--sample-fraction", "0.10",
-          "--gcp-project", var.project_id
-        ]
-        
-        # Puedes mantener u omitir los bloques env {}, pero con 'args' ya es suficiente.
+        env {
+          name  = "INPUT_BUCKET"
+          value = "raw-data-tfm" # Solo el nombre plano que pide tu os.environ["INPUT_BUCKET"]
+        }
+        env {
+          name  = "OUTPUT_BUCKET"
+          value = "clean-data-tfm" # Solo el nombre plano para tu salida
+        }
+
+        env {
+          name  = "INPUT_PATH"
+          value="gs://raw-data-tfm/df_completo_cr.csv"
+        }
+        env {
+          name  = "OUTPUT_CLEAN_PATH"
+          value = "gs://clean-data-tfm/df_completo_cr_clean.csv"
+        }
+        env {
+          name  = "OUTPUT_EDA_PATH"
+          value = "gs://clean-data-tfm/eda_results.json"
+        }
+        env {
+          name  = "PROJECT_ID"
+          value = var.project_id
+        }
+        env {
+          name  = "REGION"
+          value = var.region
+        }
+        env {
+          name  = "SAMPLE_FRACTION"
+          value = "0.10" # Puedes convertir esto también en una variable de Terraform si quieres
+        }
       }
     }
   }
