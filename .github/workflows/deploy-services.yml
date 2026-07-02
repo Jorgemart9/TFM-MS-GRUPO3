@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - despliegue_modelos
 
 env:
   PROJECT_ID: "tfm-ms-3"
