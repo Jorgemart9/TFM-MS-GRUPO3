@@ -43,3 +43,9 @@ resource "google_project_iam_member" "github_deployer_artifact_writer" {
   role    = "roles/artifactregistry.writer"
   member  = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
 }
+
+resource "google_project_iam_member" "github_deployer_run_admin" {
+  project = "tfm-ms-3"
+  role    = "roles/run.admin"
+  member  = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
+}
