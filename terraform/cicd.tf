@@ -25,10 +25,7 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.actor"      = "assertion.actor"
     "attribute.repository" = "assertion.repository"
   }
-
-  # 👈 ESTA ES LA LÍNEA QUE PIDE GOOGLE CLOUD PARA ARREGLAR EL ERROR 400
-  attribute_condition = "assertion.repository == 'jorgemart9/TFM-MS-GRUPO3'"
-
+  attribute_condition = "attribute.repository.contains('tfm-ms-grupo3') || attribute.repository.contains('TFM-MS-GRUPO3')"
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
   }
