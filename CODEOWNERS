@@ -1,7 +1,0 @@
-# Solicita revision automaticamente a estas personas en cada PR.
-# En el plan gratuito privado esto SOLICITA revision, pero no la
-# OBLIGA (eso requiere proteccion de ramas de pago). Aun asi es util.
-#
-# Sustituye los nombres por los usuarios reales de GitHub del grupo.
-
-*       @usuario-propietario @companera-de-equipo

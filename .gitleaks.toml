@@ -1,0 +1,12 @@
+
+title = "gitleaks config TFM-MS-GRUPO3"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos: notebooks con JS/base64 en el historial"
+paths = [
+  '''TFM/notebooks/.*\.ipynb''',
+  '''.*\.ipynb''',
+]
