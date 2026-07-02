@@ -43,38 +43,37 @@ jobs:
     # ==========================================
     - name: Build and Push Preprocess Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest ./src/preprocess
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest
+        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest ./preprocess
+        docker push europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest
 
     - name: Build and Push Dash Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest ./src/dash
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest
+        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/dash-repo/dash-pipeline:latest ./dash
+        docker push europe-west1-docker.pkg.dev/tfm-ms-3/dash-repo/dash-pipeline:latest
 
     - name: Build and Push Monitoring Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-app:latest ./src/monitoring
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-app:latest
-
+        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest ./monitoring
+        docker push europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest
     # ==========================================
     # FASE B: ACTUALIZAR Y DESPLEGAR EN CLOUD RUN
     # ==========================================
     - name: Deploy Cloud Run Job (Preprocess)
       run: |
         gcloud run jobs update preprocess \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest \
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess/preprocess-pipeline:latest \
           --region=${{ env.REGION }}
 
     - name: Deploy Cloud Run Service (Dash)
       run: |
         gcloud run services update dash \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest \
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash/dash-app:latest \
           --region=${{ env.REGION }}
 
     - name: Deploy Cloud Run Service (Monitoring)
       run: |
         gcloud run services update monitoring \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-app:latest \
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring/monitoring-app:latest \
           --region=${{ env.REGION }}
 
     # ==========================================
