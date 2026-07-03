@@ -1,6 +1,4 @@
-# ===================================================================
-# WORKLOAD IDENTITY FEDERATION (CI/CD GITHUB ACTIONS)
-# ===================================================================
+
 # Crear la cuenta de servicio con el ID exacto que requiere el pipeline
 resource "google_service_account" "github_deployer" {
   account_id   = "sa-github-deployer"
@@ -38,12 +36,14 @@ resource "google_service_account_iam_member" "github_wif_binding" {
   member             = "principalSet://iam.googleapis.com/projects/1076362823794/locations/global/workloadIdentityPools/github/*"
 }
 
+#4. Permiso para escribir
 resource "google_project_iam_member" "github_deployer_artifact_writer" {
   project = "tfm-ms-3"
   role    = "roles/artifactregistry.writer"
   member  = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
 }
 
+#5. Permiso para ejecutar el deploy de cloud run
 resource "google_project_iam_member" "github_deployer_run_admin" {
   project = "tfm-ms-3"
   role    = "roles/run.admin"

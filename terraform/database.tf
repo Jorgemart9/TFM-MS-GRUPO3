@@ -1,3 +1,5 @@
+#Levantamos la base de datos y las tablas 
+
 data "google_bigquery_dataset" "analytics_warehouse" {
   dataset_id = "analytics_warehouse"
   project    = var.project_id
@@ -14,25 +16,26 @@ resource "google_bigquery_dataset" "dataset" {
 }
 
 resource "google_bigquery_table" "bq_table" {
-  dataset_id          = data.google_bigquery_dataset.analytics_warehouse.dataset_id
-  table_id            = "datos_limpios" # Cámbialo si tu tabla tiene otro nombre
+  # Cambia data.google_bigquery_dataset por google_bigquery_dataset (el que creas arriba) para evitar conflictos de lectura previos
+  dataset_id          = google_bigquery_dataset.dataset.dataset_id
+  table_id            = "datos_limpios"
   deletion_protection = false
 
   external_data_configuration {
-    autodetect    = true # Esto le dice a BQ que adivine si es INT, FLOAT, STRING, etc.
+    autodetect    = true 
     source_format = "CSV"
+    
+    # CORREGIDA LA URI: Sin doble barra diagonal y con el nombre real de tu archivo limpio
     source_uris = [
-      "gs://clean-data-tfm/df_completo_limpio.csv"
+      "gs://clean-data-tfm/df_completo_cr_clean.csv"
     ]
 
+    ignore_unknown_values = true
+
     csv_options {
-      quote = "\""
-
-      # 1. Le decimos que la primera fila son los nombres de las columnas (puntuacion_c, ingresos_anuales...)
+      quote             = "\""
       skip_leading_rows = 1
-
-      # 2. Forzamos a que el separador de columnas sea el punto y coma
-      field_delimiter = ";"
+      field_delimiter   = ";"
     }
   }
 }
