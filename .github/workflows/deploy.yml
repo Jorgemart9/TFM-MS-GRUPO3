@@ -81,3 +81,30 @@ jobs:
         gcloud run jobs execute preprocess \
           --region=${{ env.REGION }} \
           --async
+
+   # ==========================================
+    # FASE d: ia-ml-eda
+    # =========================================
+    - name: Upload model artifact
+      run: |
+        gcloud storage cp \
+          ia_ml_eda/model/model.joblib \
+          gs:// vertex-pipelines-staging-tfm-ms-3/models/model.joblib
+
+    - name: Register model in Vertex AI
+      run: |
+        gcloud ai models upload \
+          --project=${{ env.PROJECT_ID }} \
+          --region=${{ env.REGION }} \
+          --display-name=modelo-tfm \
+          --artifact-uri=gs://TU_BUCKET/models \
+          --container-image-uri=us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-5:latest      
+
+    - name: Register model in Vertex AI
+      run: |
+        gcloud ai models upload \
+          --project=${{ env.PROJECT_ID }} \
+          --region=${{ env.REGION }} \
+          --display-name=modelo-tfm \
+          --artifact-uri=gs://TU_BUCKET/models \
+          --container-image-uri=us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-5:latest

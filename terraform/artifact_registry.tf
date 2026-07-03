@@ -25,11 +25,5 @@ resource "google_artifact_registry_repository" "monitoring_repo" {
   depends_on    = [google_project_service.enabled_apis]
 }
 
-# 4. Trigger
-resource "google_cloudbuildv2_repository" "tfm_repository" {
-  name              = "TFM-MS-GRUPO3"
-  location          = var.region
-  parent_connection = google_cloudbuildv2_connection.github_connection.id
-  remote_uri        = "https://github.com/Jorgemart9/TFM-MS-GRUPO3.git"
-}
+
  

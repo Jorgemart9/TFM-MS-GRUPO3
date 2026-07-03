@@ -16,10 +16,8 @@ resource "google_service_account" "sa_monitoring" {
   display_name = "Identity for Monitoring Cloud Run Service"
 }
 
-# 4.Cuenta de servicio para desplegar el pipeline de VertexAI
-# Cuenta de servicio con la que se ejecutarán los componentes del pipeline en GCP
 resource "google_service_account" "sa_vertex_pipelines" {
-  account_id   = "sa-vertex-pipelines"
-  display_name = "Service Account para la ejecución de Vertex AI Pipelines"
+  account_id   = "vertex-pipelines-sa"
+  display_name = "Vertex Pipelines Service Account"
+  project      = var.project_id
 }
-
