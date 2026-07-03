@@ -71,21 +71,10 @@ jobs:
           --image=europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest \
           --region=europe-west1
 
-    - name: Deploy Cloud Run Service (Dash)
-      run: |
-        gcloud run services update dash \
-          --image=europe-west1-docker.pkg.dev/tfm-ms-3/dash-repo/dash-pipeline:latest \
-          --region=europe-west1
-
-    - name: Deploy Cloud Run Service (Monitoring)
-      run: |
-        gcloud run services update monitoring \
-          --image=europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest \
-          --region=europe-west1
 
     # ==========================================
     # FASE C: DISPARAR EJECUCIÓN AUTOMÁTICA
-    # ==========================================
+    # =========================================
     - name: Execute Preprocess Job Automatically
       run: |
         echo "[*] Disparando la ejecución del Job de preprocesamiento en Cloud Run..."
