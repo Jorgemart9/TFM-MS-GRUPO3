@@ -80,8 +80,9 @@ resource "google_project_iam_member" "vertex_ai_user" {
   member  = "serviceAccount:${google_service_account.sa_vertex_pipelines.email}"
 }
 
-resource "google_storage_bucket_iam_member" "github_storage_admin" {
-  bucket = "vertex-pipelines-staging-tfm-ms-3"
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
+resource "google_project_iam_member" "github_storage_admin" {
+  project = var.project_id
+  role    = "roles/storage.admin"
+
+  member = "serviceAccount:${google_service_account.github_deployer.email}"
 }
