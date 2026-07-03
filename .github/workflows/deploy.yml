@@ -23,20 +23,26 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # 1. Autenticación automática y segura en Google Cloud sin contraseñas
+    # ==========================================
+    # FASE AUTENTICACIÓN
+    # ==========================================
     - name: Google Auth
+      id: auth
       uses: google-github-actions/auth@v2
       with:
         workload_identity_provider: ${{ env.WIF_PROVIDER }}
         service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+        token_format: 'access_token'
+
+    - name: Login to Artifact Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGION }}-docker.pkg.dev
+        username: oauth2accesstoken
+        password: ${{ steps.auth.outputs.access_token }}
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
-
-    # 2. Configurar Docker para que pueda loguearse en Artifact Registry
-    - name: Configure Docker for GCP
-      run: |
-        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
     # ==========================================
     # FASE A: COMPILAR Y SUBIR IMÁGENES DOCKER
@@ -55,26 +61,27 @@ jobs:
       run: |
         docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest ./monitoring
         docker push europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest
+
     # ==========================================
     # FASE B: ACTUALIZAR Y DESPLEGAR EN CLOUD RUN
     # ==========================================
-    - name: Deploy Cloud Run Job (Preprocess)
+    - name: Update Preprocess Job
       run: |
         gcloud run jobs update preprocess \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess/preprocess-pipeline:latest \
-          --region=${{ env.REGION }}
+          --image=europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest \
+          --region=europe-west1
 
     - name: Deploy Cloud Run Service (Dash)
       run: |
         gcloud run services update dash \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash/dash-app:latest \
-          --region=${{ env.REGION }}
+          --image=europe-west1-docker.pkg.dev/tfm-ms-3/dash-repo/dash-pipeline:latest \
+          --region=europe-west1
 
     - name: Deploy Cloud Run Service (Monitoring)
       run: |
         gcloud run services update monitoring \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring/monitoring-app:latest \
-          --region=${{ env.REGION }}
+          --image=europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest \
+          --region=europe-west1
 
     # ==========================================
     # FASE C: DISPARAR EJECUCIÓN AUTOMÁTICA
