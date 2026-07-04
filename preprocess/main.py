@@ -6,7 +6,8 @@ import random
 import argparse
 import io
 from google.cloud import bigquery
-from google.api_core.exceptions import Conflict
+
+
 
 # Intentar importar las librerías de GCP solo para lectura desde GCS
 gcp_active = False
@@ -152,17 +153,17 @@ def load_data(src_path):
 
 # -------------------------------------------------------------------
 # FUNCIONES DE ESCRITURA DIRECTA EN BIGQUERY
-# -------------------------------------------------------------------
 def ensure_bq_dataset(client, dataset_id, location):
     dataset_id_full = f"{project_id}.{dataset_id}"
-    try:
-        client.get_dataset(dataset_id_full)
-        print(f"[*] Dataset BigQuery existente: {dataset_id_full}")
-    except NotFound:
-        dataset = bigquery.Dataset(dataset_id_full)
-        dataset.location = location
-        client.create_dataset(dataset, exists_ok=True)
-        print(f"[*] Dataset BigQuery creado: {dataset_id_full}")
+
+    dataset = bigquery.Dataset(dataset_id_full)
+    dataset.location = location
+
+    client.create_dataset(dataset, exists_ok=True)
+
+    print(f"[*] Dataset BigQuery disponible: {dataset_id_full}")
+
+
 def load_dataframe_to_bq(client, df_to_load, table_name):
     table_id = f"{project_id}.{bq_dataset}.{table_name}"
 
