@@ -52,18 +52,4 @@ resource "google_project_iam_member" "monitoring_bq_viewer" {
   member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
-# 8.Permiso a BigQuery / Preprocess para leer del bucket de salida
-resource "google_storage_bucket_iam_member" "bigquery_storage_reader" {
-  # CORRECCIÓN: Vinculación dinámica al bucket del main.tf para evitar el Error 404
-  bucket = google_storage_bucket.output_bucket.name
-  role   = "roles/storage.objectViewer" 
-  member = "serviceAccount:${google_service_account.sa_preprocess.email}"
-}
 
-# 9.Permiso para que preprocess pueda escribir el JSON limpio en el bucket
-resource "google_storage_bucket_iam_member" "preprocess_write_clean" {
-  # CORRECCIÓN: Vinculación dinámica al bucket del main.tf para evitar el Error 404
-  bucket = google_storage_bucket.output_bucket.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.sa_preprocess.email}"
-}

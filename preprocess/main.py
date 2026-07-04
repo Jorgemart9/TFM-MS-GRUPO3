@@ -7,7 +7,7 @@ import argparse
 import io
 from google.cloud import bigquery
 
-# Intentar importar las librerías de GCP
+# Intentar importar las librerías de GCP solo para lectura desde GCS
 gcp_active = False
 try:
     from google.cloud import storage
@@ -24,32 +24,40 @@ except ImportError:
 parser = argparse.ArgumentParser(
     description="Pipeline de Preprocesamiento y EDA para Cloud Run / Local"
 )
+
 parser.add_argument(
     "--input-path",
     type=str,
     default=None,
     help="Ruta del CSV original 'sucio' (GCS gs://... o local)",
 )
-parser.add_argument(
-    "--output-clean-path",
-    type=str,
-    default=None,
-    help="Ruta de destino del CSV limpio (GCS gs://... o local)",
-)
-parser.add_argument(
-    "--output-eda-path",
-    type=str,
-    default=None,
-    help="Ruta de destino del JSON analítico de EDA (GCS gs://... o local)",
-)
+
 parser.add_argument(
     "--sample-fraction",
     type=float,
     default=0.10,
     help="Fracción de muestreo para estadísticas del EDA",
 )
+
 parser.add_argument(
-    "--gcp-project", type=str, default=None, help="ID del Proyecto de Google Cloud"
+    "--gcp-project",
+    type=str,
+    default=None,
+    help="ID del Proyecto de Google Cloud",
+)
+
+parser.add_argument(
+    "--bq-dataset",
+    type=str,
+    default=None,
+    help="Dataset de BigQuery donde se escribirán las tablas",
+)
+
+parser.add_argument(
+    "--bq-location",
+    type=str,
+    default=None,
+    help="Localización del dataset de BigQuery",
 )
 
 args = parser.parse_args()
@@ -73,41 +81,31 @@ def resolve_path(path_value, fallback_local=None, default_object=None):
 
 
 project_id = args.gcp_project or os.getenv("GCP_PROJECT_ID") or os.getenv("PROJECT_ID")
-bq_dataset = os.getenv("BQ_DATASET", "analytics_warehouse")
-bq_location = os.getenv("BQ_LOCATION", "europe-southwest1")
+bq_dataset = args.bq_dataset or os.getenv("BQ_DATASET", "analytics_warehouse")
+bq_location = args.bq_location or os.getenv("BQ_LOCATION", "europe-southwest1")
+
+if not project_id:
+    raise ValueError(
+        "No se ha definido project_id. Usa --gcp-project, GCP_PROJECT_ID o PROJECT_ID."
+    )
 
 # Establecer fallbacks por defecto para desarrollo local
 input_path = resolve_path(
     args.input_path or os.getenv("INPUT_PATH") or os.getenv("INPUT_BUCKET"),
     fallback_local="df_completo_cr.csv",
 )
+
 if not input_path or (
     not input_path.startswith("gs://") and not os.path.exists(input_path)
 ):
-    if not input_path.startswith("gs://") and os.path.exists("df_completo_cr_mini.csv"):
+    if input_path and not input_path.startswith("gs://") and os.path.exists(
+        "df_completo_cr_mini.csv"
+    ):
         input_path = "df_completo_cr_mini.csv"
-
-output_clean_path = resolve_path(
-    args.output_clean_path
-    or os.getenv("OUTPUT_CLEAN_PATH")
-    or os.getenv("OUTPUT_BUCKET"),
-    fallback_local="df_completo_cr_clean.csv",
-    default_object="df_completo_cr_clean.csv",
-)
-if not output_clean_path:
-    output_clean_path = "df_completo_cr_clean.csv"
-
-output_eda_path = resolve_path(
-    args.output_eda_path or os.getenv("OUTPUT_EDA_PATH") or os.getenv("OUTPUT_BUCKET"),
-    fallback_local="eda_results.json",
-    default_object="eda_results.json",
-)
-if not output_eda_path:
-    output_eda_path = "eda_results.json"
 
 
 # -------------------------------------------------------------------
-# FUNCIONES DE CARGA Y GUARDADO SOPORTANDO GCS NATIVO
+# FUNCIONES DE CARGA
 # -------------------------------------------------------------------
 def split_gcs_path(gcs_path):
     if not gcs_path.startswith("gs://"):
@@ -130,8 +128,8 @@ def load_data(src_path):
         print(f"[*] Descargando dataset desde GCS: {src_path}...")
         bucket_name, blob_path = split_gcs_path(src_path)
 
-        client = storage.Client(project=project_id)
-        bucket = client.bucket(bucket_name)
+        storage_client = storage.Client(project=project_id)
+        bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(blob_path)
 
         if not blob.exists():
@@ -141,48 +139,50 @@ def load_data(src_path):
         df = pd.read_csv(io.BytesIO(data_bytes), sep=";")
         print(f"[*] Dataset de GCS cargado. Filas: {len(df)}")
         return df
-    else:
-        print(f"[*] Cargando dataset local: {src_path}...")
-        if not os.path.exists(src_path):
-            raise FileNotFoundError(f"No se encontró el fichero local: {src_path}")
-        df = pd.read_csv(src_path, sep=";")
-        print(f"[*] Dataset local cargado. Filas: {len(df)}")
-        return df
+
+    print(f"[*] Cargando dataset local: {src_path}...")
+    if not os.path.exists(src_path):
+        raise FileNotFoundError(f"No se encontró el fichero local: {src_path}")
+
+    df = pd.read_csv(src_path, sep=";")
+    print(f"[*] Dataset local cargado. Filas: {len(df)}")
+    return df
 
 
-def save_file(content_or_df, dest_path, is_csv=False):
-    if dest_path.startswith("gs://"):
-        if not gcp_active:
-            raise RuntimeError(
-                "google-cloud-storage no está instalado para escribir en GCS"
-            )
+# -------------------------------------------------------------------
+# FUNCIONES DE ESCRITURA DIRECTA EN BIGQUERY
+# -------------------------------------------------------------------
+def ensure_bq_dataset(client, dataset_id, location):
+    dataset_ref = bigquery.Dataset(f"{project_id}.{dataset_id}")
+    dataset_ref.location = location
 
-        print(f"[*] Subiendo resultado a GCS: {dest_path}...")
-        bucket_name, blob_path = split_gcs_path(dest_path)
+    try:
+        client.get_dataset(dataset_ref)
+        print(f"[*] Dataset BigQuery existente: {project_id}.{dataset_id}")
+    except Exception:
+        client.create_dataset(dataset_ref)
+        print(f"[*] Dataset BigQuery creado: {project_id}.{dataset_id}")
 
-        client = storage.Client(project=project_id)
-        bucket = client.bucket(bucket_name)
-        blob = bucket.blob(blob_path)
 
-        if is_csv:
-            csv_data = content_or_df.to_csv(sep=";", index=False)
-            blob.upload_from_string(csv_data, content_type="text/csv")
-        else:
-            json_data = json.dumps(content_or_df, indent=4)
-            blob.upload_from_string(json_data, content_type="application/json")
-        print("[*] Subida a GCS completada con éxito.")
-    else:
-        print("[*] Guardando localmente: {dest_path}...")
-        dir_name = os.path.dirname(dest_path)
-        if dir_name and not os.path.exists(dir_name):
-            os.makedirs(dir_name, exist_ok=True)
+def load_dataframe_to_bq(client, df_to_load, table_name):
+    table_id = f"{project_id}.{bq_dataset}.{table_name}"
 
-        if is_csv:
-            content_or_df.to_csv(dest_path, sep=";", index=False)
-        else:
-            with open(dest_path, "w") as f:
-                json.dump(content_or_df, f, indent=4)
-        print("[*] Escritura local completada con éxito.")
+    print(f"[*] Escribiendo tabla en BigQuery: {table_id}")
+
+    job_config = bigquery.LoadJobConfig(
+        write_disposition="WRITE_TRUNCATE",
+        autodetect=True,
+    )
+
+    job = client.load_table_from_dataframe(
+        df_to_load,
+        table_id,
+        job_config=job_config,
+    )
+
+    job.result()
+
+    print(f"[*] Tabla cargada correctamente: {table_id}. Filas: {len(df_to_load)}")
 
 
 def preprocess_and_feature_engineering(df_in):
@@ -221,6 +221,7 @@ def preprocess_and_feature_engineering(df_in):
         "9 years": 9.0,
         "10+ years": 10.0,
     }
+
     if "antiguedad_laboral" in df_out.columns:
         df_out["antiguedad_laboral_num"] = (
             df_out["antiguedad_laboral"].map(antiguedad_map).fillna(0.0)
@@ -230,6 +231,7 @@ def preprocess_and_feature_engineering(df_in):
 
     # 4. Mapeo ordinal de grado de riesgo
     grado_map = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 7}
+
     if "grado_riesgo" in df_out.columns:
         df_out["grado_riesgo_num"] = df_out["grado_riesgo"].map(grado_map).fillna(4.0)
     else:
@@ -243,10 +245,13 @@ def preprocess_and_feature_engineering(df_in):
     df_out["cuota_mensual_estimada"] = (imp * (1.0 + (rate / 100.0))) / plazo
 
     inc = df_out["ingresos_anuales"].fillna(1.0)
-    df_out["ratio_carga_financiera"] = (df_out["cuota_mensual_estimada"] * 12.0) / (
-        inc + 1.0
+    df_out["ratio_carga_financiera"] = (
+        df_out["cuota_mensual_estimada"] * 12.0
+    ) / (inc + 1.0)
+
+    df_out["ingreso_residual_anual"] = inc - (
+        df_out["cuota_mensual_estimada"] * 12.0
     )
-    df_out["ingreso_residual_anual"] = inc - (df_out["cuota_mensual_estimada"] * 12.0)
 
     revol = df_out["porcentaje_uso_credito_revolving"].fillna(0.0)
     inq = df_out["consultas_credito_ultimos_6_meses"].fillna(0.0)
@@ -282,8 +287,6 @@ print("[*] Generando ingeniería de características y normalizaciones...")
 df = preprocess_and_feature_engineering(df)
 df_clean = preprocess_and_feature_engineering(df_clean)
 
-# 3. Guardar dataset limpio
-save_file(df_clean, output_clean_path, is_csv=True)
 
 # -------------------------------------------------------------------
 # EJECUCIÓN DE CÁLCULO ESTADÍSTICO EDA (MUESTREADO)
@@ -291,6 +294,7 @@ save_file(df_clean, output_clean_path, is_csv=True)
 print(
     f"\n[*] Iniciando auditoría analítica EDA (Muestra: {args.sample_fraction * 100}%)..."
 )
+
 random.seed(42)
 
 # Muestreo para el reporte estadístico
@@ -310,6 +314,7 @@ total_rows_filtered = int(df_clean_sample.shape[0])
 # Conteo de nulos en muestra
 null_counts = df_sample.isnull().sum()
 null_percentages = (null_counts / total_rows_sample) * 100
+
 null_summary = {}
 for col in df_sample.columns:
     null_summary[col] = {
@@ -319,6 +324,7 @@ for col in df_sample.columns:
 
 # Distribución del target
 estado_prestamo_dist = df_sample[target_col].value_counts(dropna=False)
+
 estado_prestamo_summary = [
     {
         "label": str(k),
@@ -329,6 +335,7 @@ estado_prestamo_summary = [
 ]
 
 target_dist = df_clean_sample["target"].value_counts()
+
 target_summary = [
     {
         "label": "Solvente (Clase 0)",
@@ -372,6 +379,7 @@ descriptive_stats = {}
 for col in features_numericas:
     if col in df_clean_sample.columns:
         desc = df_clean_sample[col].describe()
+
         descriptive_stats[col] = {
             "count": int(desc.get("count", 0)),
             "mean": round(float(desc.get("mean", 0)), 2)
@@ -396,6 +404,7 @@ categorical_summary = {}
 for col in ["grado_riesgo", "finalidad_prestamo"]:
     if col in df_sample.columns:
         dist = df_sample[col].value_counts(dropna=False)
+
         categorical_summary[col] = [
             {
                 "label": str(k),
@@ -408,8 +417,10 @@ for col in ["grado_riesgo", "finalidad_prestamo"]:
 # Matriz de Correlación
 df_num = df_clean_sample[features_numericas].dropna()
 correlation_data = {"columns": features_numericas, "matrix": []}
+
 if not df_num.empty:
     corr_matrix = df_num.corr(method="pearson")
+
     correlation_data["matrix"] = [
         [
             round(float(corr_matrix.loc[r, c]), 3)
@@ -420,6 +431,7 @@ if not df_num.empty:
         for r in features_numericas
     ]
 
+
 ##########################################################
 # CREACIÓN DE DATAFRAMES PARA BIGQUERY
 ##########################################################
@@ -427,133 +439,129 @@ if not df_num.empty:
 # --------------------------------------------------------
 # 1. eda_dimensions
 # --------------------------------------------------------
-
-df_dimensions = pd.DataFrame([{
-    "total_rows_raw_est": int(df.shape[0]),
-    "sample_rows": total_rows_sample,
-    "total_columns": total_cols,
-    "filtered_rows": int(df_clean.shape[0])
-}])
-
+df_dimensions = pd.DataFrame(
+    [
+        {
+            "total_rows_raw_est": int(df.shape[0]),
+            "sample_rows": total_rows_sample,
+            "total_columns": total_cols,
+            "filtered_rows": int(df_clean.shape[0]),
+        }
+    ]
+)
 
 # --------------------------------------------------------
 # 2. eda_nulls
 # --------------------------------------------------------
-
-df_nulls = pd.DataFrame([
-    {
-        "campo": col,
-        "nulos": values["nulos"],
-        "porcentaje": values["porcentaje"]
-    }
-    for col, values in null_summary.items()
-])
-
+df_nulls = pd.DataFrame(
+    [
+        {
+            "campo": col,
+            "nulos": values["nulos"],
+            "porcentaje": values["porcentaje"],
+        }
+        for col, values in null_summary.items()
+    ]
+)
 
 # --------------------------------------------------------
 # 3. eda_estado_prestamo_distribution
 # --------------------------------------------------------
-
 df_estado_prestamo = pd.DataFrame(estado_prestamo_summary)
-
 
 # --------------------------------------------------------
 # 4. eda_target_distribution
 # --------------------------------------------------------
-
 df_target_distribution = pd.DataFrame(target_summary)
-
 
 # --------------------------------------------------------
 # 5. eda_descriptive_stats
 # --------------------------------------------------------
-
 descriptive_rows = []
 
 for variable, stats in descriptive_stats.items():
-
-    descriptive_rows.append({
-
-        "variable": variable,
-
-        "count": stats["count"],
-
-        "mean": stats["mean"],
-
-        "std": stats["std"],
-
-        "min": stats["min"],
-
-        "median": stats["median"],
-
-        "max": stats["max"]
-
-    })
+    descriptive_rows.append(
+        {
+            "variable": variable,
+            "count": stats["count"],
+            "mean": stats["mean"],
+            "std": stats["std"],
+            "min": stats["min"],
+            "median": stats["median"],
+            "max": stats["max"],
+        }
+    )
 
 df_descriptive_stats = pd.DataFrame(descriptive_rows)
-
 
 # --------------------------------------------------------
 # 6. eda_categorical_distribution
 # --------------------------------------------------------
-
 categorical_rows = []
 
 for variable, values in categorical_summary.items():
-
     for row in values:
-
-        categorical_rows.append({
-
-            "variable": variable,
-
-            "label": row["label"],
-
-            "count": row["count"],
-
-            "percentage": row["percentage"]
-
-        })
+        categorical_rows.append(
+            {
+                "variable": variable,
+                "label": row["label"],
+                "count": row["count"],
+                "percentage": row["percentage"],
+            }
+        )
 
 df_categorical_distribution = pd.DataFrame(categorical_rows)
-
 
 # --------------------------------------------------------
 # 7. eda_correlation
 # --------------------------------------------------------
-
 correlation_rows = []
 
 columns = correlation_data["columns"]
-
 matrix = correlation_data["matrix"]
 
 for i, variable_x in enumerate(columns):
-
     for j, variable_y in enumerate(columns):
-
-        correlation_rows.append({
-
-            "variable_x": variable_x,
-
-            "variable_y": variable_y,
-
-            "correlation": matrix[i][j]
-
-        })
+        correlation_rows.append(
+            {
+                "variable_x": variable_x,
+                "variable_y": variable_y,
+                "correlation": matrix[i][j],
+            }
+        )
 
 df_correlation = pd.DataFrame(correlation_rows)
 
-client = bigquery.Client(project=project_id)
-job = client.load_table_from_dataframe(
-    df_clean,
-    f"{project_id}.{bq_dataset}.df_completo_cr_clean_v2",
-    job_config=bigquery.LoadJobConfig(
-        write_disposition="WRITE_TRUNCATE"
-    )
+
+# -------------------------------------------------------------------
+# ESCRITURA DIRECTA EN BIGQUERY
+# -------------------------------------------------------------------
+print("[*] Iniciando carga directa en BigQuery...")
+
+bq_client = bigquery.Client(project=project_id)
+
+ensure_bq_dataset(
+    client=bq_client,
+    dataset_id=bq_dataset,
+    location=bq_location,
 )
 
-job.result()
-print("Dataset limpio cargado.")
+tables_to_load = {
+    "df_completo_cr_clean_v2": df_clean,
+    "eda_dimensions": df_dimensions,
+    "eda_nulls": df_nulls,
+    "eda_estado_prestamo_distribution": df_estado_prestamo,
+    "eda_target_distribution": df_target_distribution,
+    "eda_descriptive_stats": df_descriptive_stats,
+    "eda_categorical_distribution": df_categorical_distribution,
+    "eda_correlation": df_correlation,
+}
 
-client = bigquery.Client(project=project_id)
+for table_name, df_table in tables_to_load.items():
+    load_dataframe_to_bq(
+        client=bq_client,
+        df_to_load=df_table,
+        table_name=table_name,
+    )
+
+print("[*] Todas las tablas han sido cargadas directamente en BigQuery.")
