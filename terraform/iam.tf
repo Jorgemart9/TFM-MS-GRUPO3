@@ -52,4 +52,15 @@ resource "google_project_iam_member" "monitoring_bq_viewer" {
   member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
+resource "google_project_iam_member" "cloudrun_bq_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
+}
+
+resource "google_project_iam_member" "cloudrun_bq_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
+}
 
