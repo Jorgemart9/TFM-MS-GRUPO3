@@ -1,0 +1,11 @@
+pandas
+numpy
+scikit-learn>=1.3.0
+xgboost
+lightgbm
+catboost
+shap
+joblib
+google-cloud-aiplatform
+google-cloud-storage
+db-dtypes

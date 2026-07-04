@@ -15,27 +15,3 @@ resource "google_bigquery_dataset" "dataset" {
   depends_on = [google_project_service.enabled_apis]
 }
 
-resource "google_bigquery_table" "bq_table" {
-  # Cambia data.google_bigquery_dataset por google_bigquery_dataset (el que creas arriba) para evitar conflictos de lectura previos
-  dataset_id          = google_bigquery_dataset.dataset.dataset_id
-  table_id            = "datos_limpios"
-  deletion_protection = false
-
-  external_data_configuration {
-    autodetect    = true 
-    source_format = "CSV"
-    
-    # CORREGIDA LA URI: Sin doble barra diagonal y con el nombre real de tu archivo limpio
-    source_uris = [
-      "gs://clean-data-tfm/df_completo_cr_clean.csv"
-    ]
-
-    ignore_unknown_values = true
-
-    csv_options {
-      quote             = "\""
-      skip_leading_rows = 1
-      field_delimiter   = ";"
-    }
-  }
-}

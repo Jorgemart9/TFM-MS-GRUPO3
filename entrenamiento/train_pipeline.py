@@ -15,6 +15,10 @@ from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.calibration import CalibratedClassifierCV
+from google.cloud import bigquery
+
+bq_client = bigquery.Client(project=project_id)
+DATASET = "analytics_warehouse"
 
 # Intentar importar las librerías de GCP
 gcp_active = False

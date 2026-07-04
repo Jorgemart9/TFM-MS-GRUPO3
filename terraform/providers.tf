@@ -1,13 +1,18 @@
 terraform {
   required_version = ">= 1.5.0"
+
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 6.50"
+    }
+
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 6.50"
     }
   }
-  # Estado remoto compartido en GCS. Mismo bucket que environments/dev
-  # (gs://tfm-ms-3-tfstate) pero con prefix distinto para no colisionar.
+
   backend "gcs" {
     bucket = "tfm-ms-3-tfstate"
     prefix = "tfm/app"
@@ -15,6 +20,11 @@ terraform {
 }
 
 provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+provider "google-beta" {
   project = var.project_id
   region  = var.region
 }

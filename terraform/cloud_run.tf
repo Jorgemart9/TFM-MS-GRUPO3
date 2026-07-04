@@ -14,7 +14,15 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
           name  = "GCP_PROJECT_ID"
           value = var.project_id
         }
+        env {
+          name  = "BQ_DATASET"
+          value = "analytics_warehouse"
+        }
 
+        env {
+          name  = "BQ_LOCATION"
+          value = var.region
+        }
         env {
           name  = "INPUT_BUCKET"
           value = "raw-data-tfm" # Solo el nombre plano que pide tu os.environ["INPUT_BUCKET"]

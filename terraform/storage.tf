@@ -22,24 +22,7 @@ resource "google_storage_bucket_object" "raw_data_csv" {
   ]
 }
 
-#3. bucket de datos limpios
-resource "google_storage_bucket" "output_bucket" {
-  name                        = "clean-data-tfm"
-  location                    = var.region
-  uniform_bucket_level_access = true
-  force_destroy               = true
 
-  depends_on = [
-    google_project_service.enabled_apis
-  ]
-}
 
-#4. Un bucket para VertexAI
-resource "google_storage_bucket" "vertex_pipeline_bucket" {
-  name                     = "vertex-pipelines-staging-${var.project_id}"
-  location                 = var.region
-  force_destroy            = true
-  public_access_prevention = "enforced"
 
-  uniform_bucket_level_access = true
-}
+

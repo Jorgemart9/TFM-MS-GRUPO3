@@ -16,8 +16,4 @@ resource "google_service_account" "sa_monitoring" {
   display_name = "Identity for Monitoring Cloud Run Service"
 }
 
-resource "google_service_account" "sa_vertex_pipelines" {
-  account_id   = "vertex-pipelines-sa"
-  display_name = "Vertex Pipelines Service Account"
-  project      = var.project_id
-}
+

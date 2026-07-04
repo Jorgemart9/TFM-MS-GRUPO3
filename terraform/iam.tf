@@ -52,37 +52,18 @@ resource "google_project_iam_member" "monitoring_bq_viewer" {
   member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
-# 8.Permiso a bq ara que pueda leer de buckets
+# 8.Permiso a BigQuery / Preprocess para leer del bucket de salida
 resource "google_storage_bucket_iam_member" "bigquery_storage_reader" {
-  bucket = "clean-data-tfm"
-  role   = "roles/storage.objectViewer" # Permiso de lectura de objetos básico y seguro
-  member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
+  # CORRECCIÓN: Vinculación dinámica al bucket del main.tf para evitar el Error 404
+  bucket = google_storage_bucket.output_bucket.name
+  role   = "roles/storage.objectViewer" 
+  member = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }
 
-# 9.Permiso para que pueda escribir en un bucket
+# 9.Permiso para que preprocess pueda escribir el JSON limpio en el bucket
 resource "google_storage_bucket_iam_member" "preprocess_write_clean" {
-  bucket = "clean-data-tfm"
+  # CORRECCIÓN: Vinculación dinámica al bucket del main.tf para evitar el Error 404
+  bucket = google_storage_bucket.output_bucket.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
-}
-
-# 10.Permiso para que pueda escribir en su propio bucket de stagging (VertexAI)
-resource "google_storage_bucket_iam_member" "vertex_bucket_admin" {
-  bucket = google_storage_bucket.vertex_pipeline_bucket.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.sa_vertex_pipelines.email}"
-}
-
-# 11.Permiso para registrar los metadatos de los experimentos (Model Registry, Lineage)
-resource "google_project_iam_member" "vertex_ai_user" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.sa_vertex_pipelines.email}"
-}
-
-resource "google_project_iam_member" "github_storage_admin" {
-  project = var.project_id
-  role    = "roles/storage.admin"
-
-  member = "serviceAccount:${google_service_account.github_deployer.email}"
+  member = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }

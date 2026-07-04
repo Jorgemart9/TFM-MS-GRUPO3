@@ -1,6 +1,7 @@
 # Ignorar el ejecutable de Terraform (Windows, Linux, Mac)
 terraform
 terraform.exe
+terraform.tfvars
 
 # Ignorar archivos temporales y estados locales de Terraform
 .terraform/

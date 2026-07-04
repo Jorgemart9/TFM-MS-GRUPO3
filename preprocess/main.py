@@ -5,6 +5,7 @@ import os
 import random
 import argparse
 import io
+from google.cloud import bigquery
 
 # Intentar importar las librerías de GCP
 gcp_active = False
@@ -72,6 +73,8 @@ def resolve_path(path_value, fallback_local=None, default_object=None):
 
 
 project_id = args.gcp_project or os.getenv("GCP_PROJECT_ID") or os.getenv("PROJECT_ID")
+bq_dataset = os.getenv("BQ_DATASET", "analytics_warehouse")
+bq_location = os.getenv("BQ_LOCATION", "europe-southwest1")
 
 # Establecer fallbacks por defecto para desarrollo local
 input_path = resolve_path(
@@ -417,21 +420,140 @@ if not df_num.empty:
         for r in features_numericas
     ]
 
-# Estructurar resultado JSON
-eda_out = {
-    "dimensions": {
-        "total_rows_raw_est": int(df.shape[0]),
-        "sample_rows": total_rows_sample,
-        "total_columns": total_cols,
-        "filtered_rows": int(df_clean.shape[0]),
-    },
-    "nulls": null_summary,
-    "estado_prestamo_distribution": estado_prestamo_summary,
-    "target_distribution": target_summary,
-    "descriptive_stats": descriptive_stats,
-    "categorical_distribution": categorical_summary,
-    "correlation": correlation_data,
-}
+##########################################################
+# CREACIÓN DE DATAFRAMES PARA BIGQUERY
+##########################################################
 
-save_file(eda_out, output_eda_path, is_csv=False)
-print("[*] Preprocesamiento y análisis EDA finalizados con éxito.")
+# --------------------------------------------------------
+# 1. eda_dimensions
+# --------------------------------------------------------
+
+df_dimensions = pd.DataFrame([{
+    "total_rows_raw_est": int(df.shape[0]),
+    "sample_rows": total_rows_sample,
+    "total_columns": total_cols,
+    "filtered_rows": int(df_clean.shape[0])
+}])
+
+
+# --------------------------------------------------------
+# 2. eda_nulls
+# --------------------------------------------------------
+
+df_nulls = pd.DataFrame([
+    {
+        "campo": col,
+        "nulos": values["nulos"],
+        "porcentaje": values["porcentaje"]
+    }
+    for col, values in null_summary.items()
+])
+
+
+# --------------------------------------------------------
+# 3. eda_estado_prestamo_distribution
+# --------------------------------------------------------
+
+df_estado_prestamo = pd.DataFrame(estado_prestamo_summary)
+
+
+# --------------------------------------------------------
+# 4. eda_target_distribution
+# --------------------------------------------------------
+
+df_target_distribution = pd.DataFrame(target_summary)
+
+
+# --------------------------------------------------------
+# 5. eda_descriptive_stats
+# --------------------------------------------------------
+
+descriptive_rows = []
+
+for variable, stats in descriptive_stats.items():
+
+    descriptive_rows.append({
+
+        "variable": variable,
+
+        "count": stats["count"],
+
+        "mean": stats["mean"],
+
+        "std": stats["std"],
+
+        "min": stats["min"],
+
+        "median": stats["median"],
+
+        "max": stats["max"]
+
+    })
+
+df_descriptive_stats = pd.DataFrame(descriptive_rows)
+
+
+# --------------------------------------------------------
+# 6. eda_categorical_distribution
+# --------------------------------------------------------
+
+categorical_rows = []
+
+for variable, values in categorical_summary.items():
+
+    for row in values:
+
+        categorical_rows.append({
+
+            "variable": variable,
+
+            "label": row["label"],
+
+            "count": row["count"],
+
+            "percentage": row["percentage"]
+
+        })
+
+df_categorical_distribution = pd.DataFrame(categorical_rows)
+
+
+# --------------------------------------------------------
+# 7. eda_correlation
+# --------------------------------------------------------
+
+correlation_rows = []
+
+columns = correlation_data["columns"]
+
+matrix = correlation_data["matrix"]
+
+for i, variable_x in enumerate(columns):
+
+    for j, variable_y in enumerate(columns):
+
+        correlation_rows.append({
+
+            "variable_x": variable_x,
+
+            "variable_y": variable_y,
+
+            "correlation": matrix[i][j]
+
+        })
+
+df_correlation = pd.DataFrame(correlation_rows)
+
+client = bigquery.Client(project=project_id)
+job = client.load_table_from_dataframe(
+    df_clean,
+    f"{project_id}.{bq_dataset}.df_completo_cr_clean_v2",
+    job_config=bigquery.LoadJobConfig(
+        write_disposition="WRITE_TRUNCATE"
+    )
+)
+
+job.result()
+print("Dataset limpio cargado.")
+
+client = bigquery.Client(project=project_id)
