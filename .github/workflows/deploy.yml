@@ -100,7 +100,7 @@ jobs:
             replicaCount: 1
             containerSpec:
               # CORREGIDO: Cambiado :latest por :py310 que sí existe en Artifact Registry
-              imageUri: us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-0:py310
+              imageUri: us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-3:py310
               command:
                 - sh
                 - -c
