@@ -64,39 +64,26 @@ resource "google_project_iam_member" "cloudrun_bq_user" {
   member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }
 
+# 1. Permiso para ejecutar consultas y jobs en BigQuery (A nivel de proyecto)
+resource "google_project_iam_member" "vertex_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
+}
 
-# 3. Permisos para que Vertex AI pueda leer del Dataset Limpio de BigQuery
-resource "google_project_iam_member" "vertex_bq_reader" {
+# 2. Permiso para ver y leer los datos de las tablas de BigQuery (A nivel de proyecto)
+resource "google_project_iam_member" "vertex_bq_data_viewer" {
   project = var.project_id
   role    = "roles/bigquery.dataViewer"
   member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-
+# 3. Permiso para administrar los artefactos y modelos en Cloud Storage
 resource "google_storage_bucket_iam_member" "vertex_storage_writer" {
   bucket = google_storage_bucket.models_bucket.name 
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
-
-resource "google_project_iam_member" "vertex_user" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
-}
-
-resource "google_project_iam_member" "bq_job_user" {
-  project = "tfm-ms-3"
-  role    = "roles/bigquery.jobUser"
-  member  = "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
-}
-
-resource "google_project_iam_member" "bq_data_viewer" {
-  project = var.project_id
-  role    = "roles/bigquery.dataViewer"
-  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
-}
-
 
 
 
