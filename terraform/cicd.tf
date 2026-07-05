@@ -85,3 +85,10 @@ resource "google_service_account_iam_member" "github_act_as_vertex" {
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:sa-github-deployer-v2@${var.project_id}.iam.gserviceaccount.com"
 }
+
+# Permiso para que el deployer de GitHub pueda subir y modificar objetos en el bucket de modelos
+resource "google_storage_bucket_iam_member" "deployer_storage_admin" {
+  bucket = "models-artifacts-tfm" # O usa dynamic reference: google_storage_bucket.models_bucket.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com"
+}
