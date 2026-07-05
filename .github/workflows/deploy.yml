@@ -115,16 +115,24 @@ jobs:
         echo "[*] ID del Job extraído con éxito: $JOB_ID"
 
     # ==========================================
-    # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS
+    # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (PROCESADO POR CLOUD BUILD)
     # ==========================================
-    # NUEVO: En lugar de llamar a Cloud Build, ejecutamos el contenedor localmente en el runner usando WIF
-    - name: Run Export Metrics Validation
+    - name: Trigger Physical Cloud Build Task
       run: |
-        docker run --rm \
-          -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_creds.json \
-          -v ${{ env.GITHUB_WORKSPACE }}/visualización:/app/shared \
-          -v $GOOGLE_APPLICATION_CREDENTIALS:/tmp/gcp_creds.json \
-          ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest \
-          --gcp-project=${{ env.PROJECT_ID }} \
-          --gcp-location=${{ env.REGION }} \
-          --experiment-name="credit-risk-mvp"
+        echo "[*] Delegando la tarea a Google Cloud Build para crear el recurso físico..."
+        
+        gcloud builds submit ./visualizacion \
+          --no-source \
+          --config=inline \
+          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+          --region=${{ env.REGION }} \
+          --inline-config='
+            steps:
+              - name: "europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/export-metrics:latest"
+                args:
+                  - "--gcp-project=tfm-ms-3"
+                  - "--gcp-location=europe-west1"
+                  - "--experiment-name=credit-risk-mvp"
+            options:
+              logging: CLOUD_LOGGING_ONLY
+          '
