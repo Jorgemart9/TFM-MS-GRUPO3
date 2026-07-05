@@ -64,26 +64,30 @@ resource "google_project_iam_member" "cloudrun_bq_user" {
   member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }
 
-# 1. Permiso para ejecutar consultas y jobs en BigQuery (A nivel de proyecto)
+# 1. El que te falta AHORA (Arregla el error de las imágenes image_609ae5.png e image_609b24.png)
+resource "google_project_iam_member" "vertex_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
+}
+
+# 2. Permiso para ejecutar consultas y jobs en BigQuery
 resource "google_project_iam_member" "vertex_bq_job_user" {
   project = var.project_id
   role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-# 2. Permiso para ver y leer los datos de las tablas de BigQuery (A nivel de proyecto)
+# 3. Permiso para ver y leer los datos de las tablas de BigQuery
 resource "google_project_iam_member" "vertex_bq_data_viewer" {
   project = var.project_id
   role    = "roles/bigquery.dataViewer"
   member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-# 3. Permiso para administrar los artefactos y modelos en Cloud Storage
+# 4. Permiso para guardar los modelos entrenados en el Bucket de Cloud Storage
 resource "google_storage_bucket_iam_member" "vertex_storage_writer" {
   bucket = google_storage_bucket.models_bucket.name 
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
-
-
-
