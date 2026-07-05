@@ -94,7 +94,7 @@ def preprocess_and_feature_engineering(df_in):
 # -------------------------------------------------------------------
 parser = argparse.ArgumentParser(description="Pipeline de Entrenamiento de Riesgo Crediticio para Vertex AI / Local")
 parser.add_argument("--data-source", type=str, choices=["local", "bigquery"], default="bigquery", help="Origen de datos: 'local' (CSV) o 'bigquery'")
-parser.add_argument("--data-path", type=str, default="tfm-ms-3.analytics_warehouse.df_df_completo_cr_clean_v2", help="Ruta de BigQuery (proyecto.dataset.tabla) o CSV local")
+parser.add_argument("--data-path", type=str, default="tfm-ms-3.analytics_warehouse.df_completo_cr_clean_v2", help="Ruta de BigQuery (proyecto.dataset.tabla) o CSV local")
 parser.add_argument("--sample-fraction", type=float, default=1.0, help="Fracción de muestreo del dataset")
 parser.add_argument("--gcp-project", type=str, default="tfm-ms-3", help="ID del Proyecto de Google Cloud")
 parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP")
