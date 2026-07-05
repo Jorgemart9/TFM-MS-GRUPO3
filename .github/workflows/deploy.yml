@@ -117,13 +117,22 @@ jobs:
     # ==========================================
     # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (PROCESADO POR CLOUD BUILD)
     # ==========================================
-    - name: Trigger Physical Cloud Build Task
+    - name: Trigger Cloud Build
       run: |
-        echo "[*] Delegando la tarea a Google Cloud Build para crear el recurso físico..."
-        
-        # Generamos la estructura estructurada usando un echo directo hacia la tubería
-        echo -e "steps:\n  - name: \"europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest\"\n    args:\n      - \"--gcp-project=${{ env.PROJECT_ID }}\"\n      - \"--gcp-location=${{ env.REGION }}\"\n      - \"--experiment-name=credit-risk-mvp\"\noptions:\n  logging: CLOUD_LOGGING_ONLY" | gcloud builds submit \
+        cat > cloudbuild-export.yaml <<EOF
+        steps:
+          - name: "europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest"
+            args:
+              - "--gcp-project=${{ env.PROJECT_ID }}"
+              - "--gcp-location=${{ env.REGION }}"
+              - "--experiment-name=credit-risk-mvp"
+
+        options:
+          logging: CLOUD_LOGGING_ONLY
+        EOF
+
+        gcloud builds submit \
           --no-source \
-          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
           --region=${{ env.REGION }} \
-          --config=-
+          --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+          --config=cloudbuild-export.yaml
