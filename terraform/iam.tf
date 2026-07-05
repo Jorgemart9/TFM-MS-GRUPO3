@@ -139,3 +139,9 @@ resource "google_project_iam_member" "cloudbuild_logging" {
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
 }
+
+resource "google_project_iam_member" "github_cloudbuild_editor" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.editor"
+  member  = "serviceAccount:${google_service_account.github_deployer.email}"
+}

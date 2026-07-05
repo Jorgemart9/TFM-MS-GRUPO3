@@ -29,3 +29,10 @@ resource "google_service_account" "sa_cloudbuild" {
   display_name = "Cloud Build Model Evaluator Service Account"
   project      = var.project_id
 }
+
+#CUENTA DE SERVICIO PARA CLOUD BUILD
+resource "google_service_account_iam_member" "github_act_as_cloudbuild" {
+  service_account_id = google_service_account.sa_cloudbuild.id
+  role   = "roles/iam.serviceAccountUser"
+  member = "serviceAccount:${google_service_account.github_deployer.email}"
+}

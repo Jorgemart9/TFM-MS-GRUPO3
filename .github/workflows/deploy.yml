@@ -114,14 +114,16 @@ jobs:
         echo "JOB_ID=$JOB_ID" >> $GITHUB_OUTPUT
         echo "[*] ID del Job extraído con éxito: $JOB_ID"
 
-    # ==========================================
-    # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (PROCESADO POR CLOUD BUILD)
-    # ==========================================
+# ==========================================
+# FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (CLOUD BUILD)
+# ==========================================
     - name: Trigger Cloud Build
       run: |
+        echo "[*] Generando configuración temporal de Cloud Build..."
+
         cat > cloudbuild-export.yaml <<EOF
         steps:
-          - name: "europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest"
+          - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest"
             args:
               - "--gcp-project=${{ env.PROJECT_ID }}"
               - "--gcp-location=${{ env.REGION }}"
@@ -131,8 +133,12 @@ jobs:
           logging: CLOUD_LOGGING_ONLY
         EOF
 
+        echo "[*] Lanzando Cloud Build..."
+
         gcloud builds submit \
           --no-source \
           --region=${{ env.REGION }} \
-          --service-account=projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
-          --config=cloudbuild-export.yaml
+          --config=cloudbuild-export.yaml \
+          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+
+        echo "[*] Cloud Build lanzada correctamente."
