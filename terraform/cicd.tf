@@ -1,15 +1,20 @@
-
-# Crear la cuenta de servicio con el ID exacto que requiere el pipeline
 resource "google_service_account" "github_deployer" {
-  account_id   = "sa-github-deployer"
-  display_name = "GitHub Deployer Service Account"
-  description  = "Cuenta de servicio utilizada por GitHub Actions para el despliegue de MLOps"
+  account_id   = "sa-github-deployer-v2" 
+  display_name = "GitHub Actions Deployer v2"
+  project      = "tfm-ms-3"
 }
+
+resource "google_service_account_iam_member" "github_wif_binding" {
+  service_account_id = google_service_account.github_deployer.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/TU_ORGANIZACION/TU_REPO"
+}
+
 # 1. Crear el Pool de Identidad
 resource "google_iam_workload_identity_pool" "github_pool" {
-  workload_identity_pool_id = "github"
+  workload_identity_pool_id = "github-wif-pool" 
   display_name              = "GitHub Actions Pool"
-  description               = "Pool de identidad para autenticar los flujos de GitHub Actions"
+  description               = "Identity pool for GitHub Actions CI/CD"
 }
 
 # 2. Crear el Proveedor OIDC Corregido con Condición de Atributo
@@ -29,12 +34,6 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
   }
 }
 
-# 3. Vincular el repositorio de forma dinámica (Evita el Error 404)
-resource "google_service_account_iam_member" "github_wif_binding" {
-  service_account_id = google_service_account.github_deployer.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/projects/1076362823794/locations/global/workloadIdentityPools/github/*"
-}
 
 #4. Permiso para escribir
 resource "google_project_iam_member" "github_deployer_artifact_writer" {
