@@ -84,6 +84,44 @@ resource "google_storage_bucket_iam_member" "vertex_storage_writer" {
   member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
+# 1. Permiso de Usuario de Vertex AI (Soluciona el error de Metadata Stores)
+resource "google_project_iam_binding" "vertex_user" {
+  project = "tfm-ms-3"
+  role    = "roles/aiplatform.user"
 
+  members = [
+    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
+  ]
+}
+
+# 2. Permiso para ejecutar Jobs/Consultas en BigQuery
+resource "google_project_iam_binding" "bq_job_user" {
+  project = "tfm-ms-3"
+  role    = "roles/bigquery.jobUser"
+
+  members = [
+    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
+  ]
+}
+
+# 3. Permiso para leer los datos de las tablas de BigQuery
+resource "google_project_iam_binding" "bq_data_viewer" {
+  project = "tfm-ms-3"
+  role    = "roles/bigquery.dataViewer"
+
+  members = [
+    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
+  ]
+}
+
+# 4. Permiso para ver los metadatos del proyecto en BigQuery
+resource "google_project_iam_binding" "bq_metadata_viewer" {
+  project = "tfm-ms-3"
+  role    = "roles/bigquery.metadataViewer"
+
+  members = [
+    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
+  ]
+}
 
 
