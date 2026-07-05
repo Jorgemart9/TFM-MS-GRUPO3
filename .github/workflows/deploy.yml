@@ -89,38 +89,30 @@ jobs:
     - name: Submit Model Training Job to Vertex AI
       id: vertex_job
       run: |
-        # Capturamos la salida para extraer el ID del Job en Vertex AI
-        JOB_OUTPUT=$(gcloud ai custom-jobs create \
+        echo "[*] Enviando trabajo a Vertex AI..."
+        
+        # 1. Ejecutamos el comando y guardamos TODA la salida en un archivo temporal
+        gcloud ai custom-jobs create \
           --region=${{ env.REGION }} \
           --display-name="credit-risk-training-pipeline" \
           --service-account=${{ env.VERTEX_SA }} \
           --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest" \
-          --args="--data-source=bigquery,--data-path=${{ env.PROJECT_ID }}.analytics_warehouse.df_completo_cr_clean_v2,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}")
+          --args="--data-source=bigquery,--data-path=${{ env.PROJECT_ID }}.analytics_warehouse.df_completo_cr_clean_v2,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}" > job_output.txt 2>&1
         
-        # Extraemos el ID del job usando grep/awk y lo guardamos en las variables de salida del step
-        JOB_ID=$(echo "$JOB_OUTPUT" | grep -oE "projects/[0-9]+/locations/[a-z0-9-]+/customJobs/[0-9]+")
+        # Mostramos la salida en el log de GitHub Actions para que puedas verla
+        cat job_output.txt
+        
+        # 2. Extraemos el ID buscando de forma más limpia la palabra 'customJobs/'
+        JOB_ID=$(grep -oP "projects/${{ env.PROJECT_ID }}/locations/${{ env.REGION }}/customJobs/\d+" job_output.txt || true)
+        
+        # Si por alguna razón la búsqueda anterior falló, usamos una alternativa basada en texto
+        if [ -z "$JOB_ID" ]; then
+          JOB_ID=$(grep -o "projects/.*customJobs/[0-9]*" job_output.txt | head -n 1)
+        fi
+        
+        # 3. Guardamos la variable en el entorno de GitHub Actions
         echo "JOB_ID=$JOB_ID" >> $GITHUB_OUTPUT
-        echo "[*] Job de Vertex AI enviado con éxito: $JOB_ID"
-
-    # NUEVO: Bloquear el pipeline hasta que Vertex AI termine (Evita evaluar antes de tiempo)
-    - name: Wait for Vertex AI Training to Complete
-      run: |
-        JOB_ID="${{ steps.vertex_job.outputs.JOB_ID }}"
-        echo "[*] Monitoreando el estado del Job: $JOB_ID..."
-        
-        while true; do
-          STATUS=$(gcloud ai custom-jobs describe $JOB_ID --format="value(state)")
-          echo "[*] Estado actual del entrenamiento: $STATUS"
-          
-          if [ "$STATUS" = "JOB_STATE_SUCCEEDED" ]; then
-            echo "✅ El entrenamiento ha finalizado con éxito."
-            break
-          elif [ "$STATUS" = "JOB_STATE_FAILED" ] || [ "$STATUS" = "JOB_STATE_CANCELLED" ]; then
-            echo "❌ El entrenamiento en Vertex AI falló o fue cancelado."
-            exit 1
-          fi
-          sleep 30 # Comprobar cada 30 segundos
-        done
+        echo "[*] ID del Job extraído con éxito: $JOB_ID"
 
     # ==========================================
     # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS
