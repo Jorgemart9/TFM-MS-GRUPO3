@@ -7,8 +7,7 @@ resource "google_service_account" "github_deployer" {
 resource "google_service_account_iam_member" "github_wif_binding" {
   service_account_id = google_service_account.github_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  # CORREGIDO: Todo en minúsculas para coincidir exactamente con el token que envía GitHub
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/tfm-ms-grupo3/tfm-ms-grupo3"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/jorgemart9/tfm-ms-grupo3"
 }
 
 # 1. Crear el Pool de Identidad
@@ -29,7 +28,10 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.actor"      = "assertion.actor"
     "attribute.repository" = "assertion.repository"
   }
-  attribute_condition = "attribute.repository.contains('tfm-ms-grupo3')"
+  
+  # CORREGIDO: Condición ajustada a tu usuario
+  attribute_condition = "attribute.repository.contains('jorgemart9')"
+  
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
   }
