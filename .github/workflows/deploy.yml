@@ -121,18 +121,18 @@ jobs:
       run: |
         echo "[*] Delegando la tarea a Google Cloud Build para crear el recurso físico..."
         
-        gcloud builds submit ./visualizacion \
+        # Pasamos el YAML directamente dentro del flag --config heredando los estándares de GCP
+        gcloud builds submit \
           --no-source \
-          --config=inline \
           --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
           --region=${{ env.REGION }} \
-          --inline-config='
-            steps:
-              - name: "europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/export-metrics:latest"
-                args:
-                  - "--gcp-project=tfm-ms-3"
-                  - "--gcp-location=europe-west1"
-                  - "--experiment-name=credit-risk-mvp"
-            options:
-              logging: CLOUD_LOGGING_ONLY
-          '
+          --config=- <<EOF
+        steps:
+          - name: "europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/export-metrics:latest"
+            args:
+              - "--gcp-project=tfm-ms-3"
+              - "--gcp-location=europe-west1"
+              - "--experiment-name=credit-risk-mvp"
+        options:
+          logging: CLOUD_LOGGING_ONLY
+        EOF
