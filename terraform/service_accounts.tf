@@ -1,24 +1,31 @@
-# 1.Cuenta de servicio para Cloud Run Preprocesamiento
+# CUENTA DE SERVICIO PREPROCESAMIENTO
 resource "google_service_account" "sa_preprocess" {
   account_id   = "sa-preprocess"
   display_name = "Identity for Preprocessing Cloud Run Service"
 }
 
-# 2.Cuenta de servicio para Cloud Run Dashboard
+# CUENTA DE SERVICIO CLOUD RUN DASHBOARD
 resource "google_service_account" "sa_dash" {
   account_id   = "sa-dash"
   display_name = "Identity for Dashboard Visualisation Service"
 }
 
-# 3.Cuenta de servicio para Cloud Run Monitoreo
+# CUENTA DE SERVICIO CLOUD RUN MONITOREO
 resource "google_service_account" "sa_monitoring" {
   account_id   = "sa-monitoring"
   display_name = "Identity for Monitoring Cloud Run Service"
 }
 
-#Cuenta de servicio VertexAI
+#CUENTA DE SERVICIO VERTEX AI
 resource "google_service_account" "sa_vertex" {
   account_id   = "sa-vertex-train"
   display_name = "Vertex AI Training Service Account"
+  project      = var.project_id
+}
+
+#CUENTA DE SERVICIO PARA EL CLOUD BUILD 
+resource "google_service_account" "sa_cloudbuild" {
+  account_id   = "sa-cloudbuild-evaluator"
+  display_name = "Cloud Build Model Evaluator Service Account"
   project      = var.project_id
 }

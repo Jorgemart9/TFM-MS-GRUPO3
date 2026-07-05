@@ -2,7 +2,7 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
-#1. bucket de datos sucios
+# BUCKET DATOS SUCIOS
 resource "google_storage_bucket" "input_bucket" {
   name                        = "raw-data-tfm"
   location                    = var.region
@@ -11,7 +11,7 @@ resource "google_storage_bucket" "input_bucket" {
   depends_on                  = [google_project_service.enabled_apis]
 }
 
-#2. Sube el csv SUCIO al input bucket (Datos Crudos)
+#SUBE CSV SUCIO
 resource "google_storage_bucket_object" "raw_data_csv" {
   name   = "df_completo_cr.csv"                 # Nombre real que espera tu Cloud Run
   bucket = google_storage_bucket.input_bucket.name # <--- BUCKET SUCIO (Input)
@@ -22,6 +22,7 @@ resource "google_storage_bucket_object" "raw_data_csv" {
   ]
 }
 
+#BUCKET VERTEX AI
 resource "google_storage_bucket" "models_bucket" {
   name                        = "models-artifacts-tfm" # Nombre único en GCP
   location                    = var.region

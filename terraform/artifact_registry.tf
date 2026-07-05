@@ -25,3 +25,15 @@ resource "google_artifact_registry_repository" "monitoring_repo" {
   depends_on    = [google_project_service.enabled_apis]
 }
 
+#4. Repo de VERTEXAI
+resource "google_artifact_registry_repository" "training_repo" {
+  project       = var.project_id
+  location      = "europe-west1"     
+  repository_id = "training-repo"      
+  description   = "Repositorio Docker para el pipeline de entrenamiento en Vertex AI"
+  format        = "DOCKER"
+
+  docker_config {
+    immutable_tags = false
+  }
+}

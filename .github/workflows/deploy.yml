@@ -51,41 +51,88 @@ jobs:
     # ==========================================
     - name: Build and Push Preprocess Image
       run: |
-        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest ./preprocess
-        docker push europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest ./preprocess
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest
 
     - name: Build and Push Dash Image
       run: |
-        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/dash-repo/dash-pipeline:latest ./dash
-        docker push europe-west1-docker.pkg.dev/tfm-ms-3/dash-repo/dash-pipeline:latest
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-pipeline:latest ./dash
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-pipeline:latest
 
     - name: Build and Push Monitoring Image
       run: |
-        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest ./monitoring
-        docker push europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-pipeline:latest ./monitoring
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-pipeline:latest
     
     - name: Build and Push Training Image
       run: |
-        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/training-pipeline:latest ./entrenamiento
-        docker push europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/training-pipeline:latest
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest ./entrenamiento
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest
 
+    - name: Build and Push Export Metrics Image
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest ./visualización
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
+
+    # ==========================================
     # FASE B: ACTUALIZAR Y DESPLEGAR EN CLOUD RUN
     # ==========================================
     - name: Update Preprocess Job
       run: |
         gcloud run jobs update preprocess \
-          --image=europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest \
-          --region=europe-west1
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest \
+          --region=${{ env.REGION }}
 
-        
-  # ==========================================
-    # FASE D: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
+    # ==========================================
+    # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
     # ==========================================
     - name: Submit Model Training Job to Vertex AI
+      id: vertex_job
       run: |
-        gcloud ai custom-jobs create \
+        # Capturamos la salida para extraer el ID del Job en Vertex AI
+        JOB_OUTPUT=$(gcloud ai custom-jobs create \
           --region=${{ env.REGION }} \
           --display-name="credit-risk-training-pipeline" \
           --service-account=${{ env.VERTEX_SA }} \
-          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/training-pipeline:latest" \
-          --args="--data-source=bigquery,--data-path=tfm-ms-3.analytics_warehouse.df_completo_cr_clean_v2,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}"
+          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest" \
+          --args="--data-source=bigquery,--data-path=${{ env.PROJECT_ID }}.analytics_warehouse.df_completo_cr_clean_v2,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}")
+        
+        # Extraemos el ID del job usando grep/awk y lo guardamos en las variables de salida del step
+        JOB_ID=$(echo "$JOB_OUTPUT" | grep -oE "projects/[0-9]+/locations/[a-z0-9-]+/customJobs/[0-9]+")
+        echo "JOB_ID=$JOB_ID" >> $GITHUB_OUTPUT
+        echo "[*] Job de Vertex AI enviado con éxito: $JOB_ID"
+
+    # NUEVO: Bloquear el pipeline hasta que Vertex AI termine (Evita evaluar antes de tiempo)
+    - name: Wait for Vertex AI Training to Complete
+      run: |
+        JOB_ID="${{ steps.vertex_job.outputs.JOB_ID }}"
+        echo "[*] Monitoreando el estado del Job: $JOB_ID..."
+        
+        while true; do
+          STATUS=$(gcloud ai custom-jobs describe $JOB_ID --format="value(state)")
+          echo "[*] Estado actual del entrenamiento: $STATUS"
+          
+          if [ "$STATUS" = "JOB_STATE_SUCCEEDED" ]; then
+            echo "✅ El entrenamiento ha finalizado con éxito."
+            break
+          elif [ "$STATUS" = "JOB_STATE_FAILED" ] || [ "$STATUS" = "JOB_STATE_CANCELLED" ]; then
+            echo "❌ El entrenamiento en Vertex AI falló o fue cancelado."
+            exit 1
+          fi
+          sleep 30 # Comprobar cada 30 segundos
+        done
+
+    # ==========================================
+    # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS
+    # ==========================================
+    # NUEVO: En lugar de llamar a Cloud Build, ejecutamos el contenedor localmente en el runner usando WIF
+    - name: Run Export Metrics Validation
+      run: |
+        docker run --rm \
+          -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_creds.json \
+          -v ${{ env.GITHUB_WORKSPACE }}/visualización:/app/shared \
+          -v $GOOGLE_APPLICATION_CREDENTIALS:/tmp/gcp_creds.json \
+          ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest \
+          --gcp-project=${{ env.PROJECT_ID }} \
+          --gcp-location=${{ env.REGION }} \
+          --experiment-name="credit-risk-mvp"

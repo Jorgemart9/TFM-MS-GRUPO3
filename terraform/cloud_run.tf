@@ -1,4 +1,4 @@
-# 1. Servicio de Preprocesamiento (Cloud Run Job)
+# SERVICIO PREPROCESAMIENTO
 resource "google_cloud_run_v2_job" "preprocess_job" {
   name     = "preprocess"
   location = var.region
@@ -68,7 +68,7 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
   }
 }
 
-# 2. Servicio del Dashboard
+# SERVICIO DASHBOARD
 resource "google_cloud_run_v2_service" "dash_service" {
   name     = "dash"
   location = var.region
@@ -86,7 +86,7 @@ resource "google_cloud_run_v2_service" "dash_service" {
   }
 }
 
-# 3. Servicio de Monitoreo
+# SERVICIO MONITOREO
 resource "google_cloud_run_v2_service" "monitoring_service" {
   name     = "monitoring"
   location = var.region

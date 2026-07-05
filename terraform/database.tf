@@ -1,4 +1,4 @@
-#Levantamos la base de datos y las tablas 
+#LEVANTAMOS DATABASE
 
 data "google_bigquery_dataset" "analytics_warehouse" {
   dataset_id = "analytics_warehouse"
