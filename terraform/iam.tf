@@ -72,11 +72,6 @@ resource "google_project_iam_member" "vertex_bq_reader" {
   member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-resource "google_project_iam_member" "vertex_bq_job_user" {
-  project = var.project_id
-  role    = "roles/bigquery.jobUser"
-  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
-}
 
 resource "google_storage_bucket_iam_member" "vertex_storage_writer" {
   bucket = google_storage_bucket.models_bucket.name 
@@ -84,44 +79,24 @@ resource "google_storage_bucket_iam_member" "vertex_storage_writer" {
   member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-# 1. Permiso de Usuario de Vertex AI (Soluciona el error de Metadata Stores)
-resource "google_project_iam_binding" "vertex_user" {
-  project = "tfm-ms-3"
+resource "google_project_iam_member" "vertex_user" {
+  project = var.project_id
   role    = "roles/aiplatform.user"
-
-  members = [
-    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
-  ]
+  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-# 2. Permiso para ejecutar Jobs/Consultas en BigQuery
-resource "google_project_iam_binding" "bq_job_user" {
+resource "google_project_iam_member" "bq_job_user" {
   project = "tfm-ms-3"
   role    = "roles/bigquery.jobUser"
-
-  members = [
-    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
-  ]
+  member  = "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
 }
 
-# 3. Permiso para leer los datos de las tablas de BigQuery
-resource "google_project_iam_binding" "bq_data_viewer" {
-  project = "tfm-ms-3"
+resource "google_project_iam_member" "bq_data_viewer" {
+  project = var.project_id
   role    = "roles/bigquery.dataViewer"
-
-  members = [
-    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
-  ]
+  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-# 4. Permiso para ver los metadatos del proyecto en BigQuery
-resource "google_project_iam_binding" "bq_metadata_viewer" {
-  project = "tfm-ms-3"
-  role    = "roles/bigquery.metadataViewer"
 
-  members = [
-    "serviceAccount:sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com"
-  ]
-}
 
 
