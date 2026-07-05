@@ -145,3 +145,10 @@ resource "google_project_iam_member" "github_cloudbuild_editor" {
   role    = "roles/cloudbuild.builds.editor"
   member  = "serviceAccount:${google_service_account.github_deployer.email}"
 }
+
+resource "google_artifact_registry_repository_iam_member" "cloudbuild_training_repo_reader" {
+  location   = google_artifact_registry_repository.training_repo.location
+  repository = google_artifact_registry_repository.training_repo.name
+  role   = "roles/artifactregistry.reader"
+  member = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
+}
