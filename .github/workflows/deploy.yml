@@ -86,18 +86,38 @@ jobs:
     # ==========================================
     # FASE D: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
     # ==========================================
+        # ==========================================
+    # FASE D: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
+    # ==========================================
     - name: Submit Model Training Job to Vertex AI
       run: |
         echo "[*] Subiendo el script train_pipeline.py al bucket de staging..."
-        # Corregido: Apunta a la carpeta "entrenamiento" y lo renombra a "train.py" en el bucket
         gsutil cp ./entrenamiento/train_pipeline.py gs://${{ env.GCS_BUCKET }}/src/train.py
+
+        echo "[*] Generando archivo de configuración temporal para Vertex AI..."
+        cat <<EOF > vertex_config.yaml
+        workerPoolSpecs:
+          - machineSpec:
+              machineType: n1-standard-4
+            replicaCount: 1
+            pythonPackageSpec:
+              executorImageUri: us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-0:latest
+              pythonModule: train
+              packageUris:
+                - gs://${{ env.GCS_BUCKET }}/src/train.py
+              args:
+                - "--data-source=bigquery"
+                - "--data-path=tfm-ms-3.analytics_warehouse.df_clean"
+                - "--gcp-project=${{ env.PROJECT_ID }}"
+                - "--gcs-bucket=${{ env.GCS_BUCKET }}"
+                - "--gcp-location=${{ env.REGION }}"
+        EOF
 
         echo "[*] Lanzando el Custom Job de Entrenamiento en Vertex AI..."
         gcloud ai custom-jobs create \
           --region=${{ env.REGION }} \
           --display-name="credit-risk-training-pipeline" \
-          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-0:latest,args=--data-source=bigquery,--data-path=tfm-ms-3.analytics_warehouse.df_clean,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}" \
-          --service-account=${{ env.VERTEX_SA }} \
-          --python-package-uris="gs://${{ env.GCS_BUCKET }}/src/train.py"
+          --config=vertex_config.yaml \
+          --service-account=${{ env.VERTEX_SA }}
 
         echo "[*] Job enviado con éxito. Vertex AI iniciará el entrenamiento usando los datos de BigQuery."
