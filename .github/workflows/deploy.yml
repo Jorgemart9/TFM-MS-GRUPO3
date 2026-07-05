@@ -121,14 +121,9 @@ jobs:
       run: |
         echo "[*] Delegando la tarea a Google Cloud Build para crear el recurso físico..."
         
-        # Usamos un cat multilínea sin tabulaciones al principio del bloque YAML
-        cat << 'EOF' | gcloud builds submit --no-source --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" --region=${{ env.REGION }} --config=-
-        steps:
-          - name: "europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/export-metrics:latest"
-            args:
-              - "--gcp-project=tfm-ms-3"
-              - "--gcp-location=europe-west1"
-              - "--experiment-name=credit-risk-mvp"
-        options:
-          logging: CLOUD_LOGGING_ONLY
-        EOF
+        # Generamos la estructura estructurada usando un echo directo hacia la tubería
+        echo -e "steps:\n  - name: \"europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest\"\n    args:\n      - \"--gcp-project=${{ env.PROJECT_ID }}\"\n      - \"--gcp-location=${{ env.REGION }}\"\n      - \"--experiment-name=credit-risk-mvp\"\noptions:\n  logging: CLOUD_LOGGING_ONLY" | gcloud builds submit \
+          --no-source \
+          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+          --region=${{ env.REGION }} \
+          --config=-
