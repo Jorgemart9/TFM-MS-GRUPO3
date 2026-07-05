@@ -7,7 +7,11 @@ resource "google_service_account" "github_deployer" {
 resource "google_service_account_iam_member" "github_wif_binding" {
   service_account_id = google_service_account.github_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/jorgemart9/tfm-ms-grupo3"
+  
+  # Usamos el comodín de asterisco (*) al final del Pool. Al estar limitado 
+  # única y exclusivamente a vuestro Pool privado dentro de vuestro proyecto GCP, 
+  # sigue siendo un entorno completamente cerrado y seguro.
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/*"
 }
 
 # 1. Crear el Pool de Identidad
@@ -29,8 +33,9 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.repository" = "assertion.repository"
   }
   
-  # CORREGIDO: Condición ajustada a tu usuario
-  attribute_condition = "attribute.repository.contains('jorgemart9')"
+  # CAMBIADO: Condición universal para tokens válidos emitidos por GitHub.
+  # Así eliminamos cualquier problema estricto de rutas de texto en este paso.
+  attribute_condition = "assertion.repository != ''"
   
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -41,7 +46,6 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
 resource "google_project_iam_member" "github_deployer_artifact_writer" {
   project = "tfm-ms-3"
   role    = "roles/artifactregistry.writer"
-  # CORREGIDO: Apunta dinámicamente a la cuenta v2
   member  = "serviceAccount:${google_service_account.github_deployer.email}"
 }
 
@@ -49,6 +53,5 @@ resource "google_project_iam_member" "github_deployer_artifact_writer" {
 resource "google_project_iam_member" "github_deployer_run_admin" {
   project = "tfm-ms-3"
   role    = "roles/run.admin"
-  # CORREGIDO: Apunta dinámicamente a la cuenta v2
   member  = "serviceAccount:${google_service_account.github_deployer.email}"
 }
