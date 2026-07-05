@@ -63,8 +63,12 @@ jobs:
       run: |
         docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest ./monitoring
         docker push europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/monitoring-pipeline:latest
+    
+    - name: Build and Push Training Image
+      run: |
+        docker build -t europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/training-pipeline:latest ./entrenamiento
+        docker push europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/training-pipeline:latest
 
-    # ==========================================
     # FASE B: ACTUALIZAR Y DESPLEGAR EN CLOUD RUN
     # ==========================================
     - name: Update Preprocess Job

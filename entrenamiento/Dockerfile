@@ -2,28 +2,19 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para LightGBM y XGBoost
+# Dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar las librerías de Python requeridas
-RUN pip install --no-cache-dir \
-    pandas \
-    numpy \
-    scikit-learn \
-    xgboost \
-    lightgbm \
-    catboost \
-    shap \
-    joblib \
-    google-cloud-aiplatform \
-    google-cloud-storage \
-    db-dtypes
+# Instalar dependencias Python
+COPY requirements.txt .
 
-# Copiar tu script de entrenamiento al contenedor con su nombre real
-COPY train_pipeline.py /app/train_pipeline.py
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Definir el punto de entrada
-ENTRYPOINT ["python", "/app/train_pipeline.py"]
+# Copiar el código
+COPY . .
+
+ENTRYPOINT ["python", "train_pipeline.py"]
