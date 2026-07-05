@@ -64,23 +64,26 @@ resource "google_project_iam_member" "cloudrun_bq_user" {
   member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }
 
-# Permiso para actuar como la cuenta de Preprocesamiento (Soluciona tu error actual)
-resource "google_service_account_iam_member" "act_as_preprocess" {
-  service_account_id = google_service_account.sa_preprocess.id
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.github_deployer.email}"
+
+# 3. Permisos para que Vertex AI pueda leer del Dataset Limpio de BigQuery
+resource "google_project_iam_member" "vertex_bq_reader" {
+  project = var.project_id
+  role    = "roles/bigquery.dataViewer"
+  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-# Permiso preventivo para actuar como la cuenta del Dashboard
-resource "google_service_account_iam_member" "act_as_dash" {
-  service_account_id = google_service_account.sa_dash.id
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.github_deployer.email}"
+resource "google_project_iam_member" "vertex_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-# Permiso preventivo para actuar como la cuenta de Monitoreo
-resource "google_service_account_iam_member" "act_as_monitoring" {
-  service_account_id = google_service_account.sa_monitoring.id
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.github_deployer.email}"
+resource "google_storage_bucket_iam_member" "vertex_storage_writer" {
+  bucket = google_storage_bucket.models_bucket.name 
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
+
+
+
+

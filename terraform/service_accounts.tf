@@ -16,4 +16,9 @@ resource "google_service_account" "sa_monitoring" {
   display_name = "Identity for Monitoring Cloud Run Service"
 }
 
-
+#Cuenta de servicio VertexAI
+resource "google_service_account" "sa_vertex" {
+  account_id   = "sa-vertex-train"
+  display_name = "Vertex AI Training Service Account"
+  project      = var.project_id
+}

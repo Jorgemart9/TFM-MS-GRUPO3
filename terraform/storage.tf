@@ -22,6 +22,13 @@ resource "google_storage_bucket_object" "raw_data_csv" {
   ]
 }
 
+resource "google_storage_bucket" "models_bucket" {
+  name                        = "models-artifacts-tfm" # Nombre único en GCP
+  location                    = var.region
+  uniform_bucket_level_access = true
+  force_destroy               = true 
+  depends_on                  = [google_project_service.enabled_apis]
+}
 
 
 
