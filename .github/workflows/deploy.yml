@@ -11,6 +11,8 @@ env:
   REGION: "europe-west1"
   WIF_PROVIDER: 'projects/1076362823794/locations/global/workloadIdentityPools/github-wif-pool/providers/github-provider'
   WIF_SERVICE_ACCOUNT: 'sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com'
+  VERTEX_SA: 'sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com'
+  GCS_BUCKET: 'models-artifacts-tfm'
   
 jobs:
   deploy-mlops:
@@ -71,10 +73,9 @@ jobs:
           --image=europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest \
           --region=europe-west1
 
-
     # ==========================================
-    # FASE C: DISPARAR EJECUCIÓN AUTOMÁTICA
-    # =========================================
+    # FASE C: DISPARAR EJECUCIÓN AUTOMÁTICA DE PREPROCESAMIENTO
+    # ==========================================
     - name: Execute Preprocess Job Automatically
       run: |
         echo "[*] Disparando la ejecución del Job de preprocesamiento en Cloud Run..."
@@ -82,4 +83,21 @@ jobs:
           --region=${{ env.REGION }} \
           --async
 
-   
+    # ==========================================
+    # FASE D: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
+    # ==========================================
+    - name: Submit Model Training Job to Vertex AI
+      run: |
+        echo "[*] Subiendo el script train_pipeline.py al bucket de staging..."
+        # Corregido: Apunta a la carpeta "entrenamiento" y lo renombra a "train.py" en el bucket
+        gsutil cp ./entrenamiento/train_pipeline.py gs://${{ env.GCS_BUCKET }}/src/train.py
+
+        echo "[*] Lanzando el Custom Job de Entrenamiento en Vertex AI..."
+        gcloud ai custom-jobs create \
+          --region=${{ env.REGION }} \
+          --display-name="credit-risk-training-pipeline" \
+          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-0:latest,args=--data-source=bigquery,--data-path=tfm-ms-3.analytics_warehouse.df_clean,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}" \
+          --service-account=${{ env.VERTEX_SA }} \
+          --python-package-uris="gs://${{ env.GCS_BUCKET }}/src/train.py"
+
+        echo "[*] Job enviado con éxito. Vertex AI iniciará el entrenamiento usando los datos de BigQuery."
