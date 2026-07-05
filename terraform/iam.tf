@@ -64,3 +64,23 @@ resource "google_project_iam_member" "cloudrun_bq_user" {
   member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }
 
+# Permiso para actuar como la cuenta de Preprocesamiento (Soluciona tu error actual)
+resource "google_service_account_iam_member" "act_as_preprocess" {
+  service_account_id = google_service_account.sa_preprocess.id
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
+# Permiso preventivo para actuar como la cuenta del Dashboard
+resource "google_service_account_iam_member" "act_as_dash" {
+  service_account_id = google_service_account.sa_dash.id
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
+# Permiso preventivo para actuar como la cuenta de Monitoreo
+resource "google_service_account_iam_member" "act_as_monitoring" {
+  service_account_id = google_service_account.sa_monitoring.id
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.github_deployer.email}"
+}
