@@ -83,16 +83,9 @@ jobs:
     # ==========================================
     - name: Submit Model Training Job to Vertex AI
       run: |
-        echo "[*] Subiendo el script train_pipeline.py al bucket de staging..."
-        gsutil cp ./entrenamiento/train_pipeline.py gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py
-
-        echo "[*] Lanzando el Custom Job de Entrenamiento en Vertex AI..."
         gcloud ai custom-jobs create \
           --region=${{ env.REGION }} \
           --display-name="credit-risk-training-pipeline" \
           --service-account=${{ env.VERTEX_SA }} \
-          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=docker.io/library/python:3.10-slim" \
-          --command="sh,-c,pip install --no-cache-dir scikit-learn pandas google-cloud-bigquery google-cloud-storage && python3 -c \"from google.cloud import storage; storage.Client().bucket('${{ env.GCS_BUCKET }}').blob('src/train_pipeline.py').download_to_filename('train_pipeline.py')\" && python3 train_pipeline.py \"\$@\"" \
+          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/training-pipeline:latest" \
           --args="--data-source=bigquery,--data-path=tfm-ms-3.analytics_warehouse.df_clean,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}"
-
-        echo "[*] Job enviado con éxito. Vertex AI iniciará el entrenamiento usando los datos de BigQuery."
