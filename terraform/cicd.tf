@@ -7,7 +7,8 @@ resource "google_service_account" "github_deployer" {
 resource "google_service_account_iam_member" "github_wif_binding" {
   service_account_id = google_service_account.github_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/TFM-MS-GRUPO3/TFM-MS-GRUPO3"
+  # CORREGIDO: Todo en minúsculas para coincidir exactamente con el token que envía GitHub
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/tfm-ms-grupo3/tfm-ms-grupo3"
 }
 
 # 1. Crear el Pool de Identidad
@@ -17,7 +18,7 @@ resource "google_iam_workload_identity_pool" "github_pool" {
   description               = "Identity pool for GitHub Actions CI/CD"
 }
 
-# 2. Crear el Proveedor OIDC Corregido con Condición de Atributo
+# 2. Crear el Proveedor OIDC
 resource "google_iam_workload_identity_pool_provider" "github_provider" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-provider"
@@ -28,23 +29,24 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.actor"      = "assertion.actor"
     "attribute.repository" = "assertion.repository"
   }
-  attribute_condition = "attribute.repository.contains('tfm-ms-grupo3') || attribute.repository.contains('TFM-MS-GRUPO3')"
+  attribute_condition = "attribute.repository.contains('tfm-ms-grupo3')"
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
   }
 }
 
-
-#4. Permiso para escribir
+# 4. Permiso para escribir en Artifact Registry
 resource "google_project_iam_member" "github_deployer_artifact_writer" {
   project = "tfm-ms-3"
   role    = "roles/artifactregistry.writer"
-  member  = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
+  # CORREGIDO: Apunta dinámicamente a la cuenta v2
+  member  = "serviceAccount:${google_service_account.github_deployer.email}"
 }
 
-#5. Permiso para ejecutar el deploy de cloud run
+# 5. Permiso para ejecutar el deploy de Cloud Run
 resource "google_project_iam_member" "github_deployer_run_admin" {
   project = "tfm-ms-3"
   role    = "roles/run.admin"
-  member  = "serviceAccount:sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
+  # CORREGIDO: Apunta dinámicamente a la cuenta v2
+  member  = "serviceAccount:${google_service_account.github_deployer.email}"
 }
