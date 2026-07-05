@@ -5,12 +5,10 @@ resource "google_service_account" "github_deployer" {
 }
 
 resource "google_service_account_iam_member" "github_wif_binding" {
-  service_account_id = google_service_account.github_deployer.name
-  role               = "roles/iam.workloadIdentityUser"
+  # CAMBIADO: Usamos .id en lugar de .name para que apunte al recurso correcto en la API de IAM
+  service_account_id = google_service_account.github_deployer.id
   
-  # Usamos el comodín de asterisco (*) al final del Pool. Al estar limitado 
-  # única y exclusivamente a vuestro Pool privado dentro de vuestro proyecto GCP, 
-  # sigue siendo un entorno completamente cerrado y seguro.
+  role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/*"
 }
 
