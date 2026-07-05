@@ -7,7 +7,7 @@ resource "google_service_account" "github_deployer" {
 resource "google_service_account_iam_member" "github_wif_binding" {
   service_account_id = google_service_account.github_deployer.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/TU_ORGANIZACION/TU_REPO"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/TFM-MS-GRUPO3/TFM-MS-GRUPO3"
 }
 
 # 1. Crear el Pool de Identidad
