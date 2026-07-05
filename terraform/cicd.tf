@@ -75,8 +75,8 @@ resource "google_service_account_iam_member" "act_as_monitoring" {
 # 5. Permiso para que GitHub Actions pueda crear y gestionar Jobs en Vertex AI
 resource "google_project_iam_member" "github_vertex_admin" {
   project = var.project_id
-  role    = "roles/aiplatform.user" # Permite crear Custom Jobs y entrenamientos
-  member  = "serviceAccount:sa-github-deployer-v2@${var.project_id}.iam.gserviceaccount.com"
+  role    = "roles/aiplatform.user" # Permite crear Custom Jobs y entrenamientos  
+  member  = "serviceAccount:${google_service_account.github_deployer.email}"
 }
 
 # 6. El eslabón clave (actAs): Permitir a GitHub usar la cuenta de Vertex AI para lanzar el entrenamiento
