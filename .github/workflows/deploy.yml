@@ -86,27 +86,26 @@ jobs:
     # ==========================================
     # FASE D: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
     # ==========================================
-  
     - name: Submit Model Training Job to Vertex AI
       run: |
         echo "[*] Subiendo el script train_pipeline.py al bucket de staging..."
         gsutil cp ./entrenamiento/train_pipeline.py gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py
 
         echo "[*] Generando archivo de configuración temporal para Vertex AI..."
-        cat <<EOF > vertex_config.yaml
+        # Nota el '-' en <<-'EOF', esto limpia los espacios/tabuladores iniciales de cada línea en Bash
+        cat <<-'EOF' > vertex_config.yaml
         workerPoolSpecs:
           - machineSpec:
               machineType: n1-standard-4
             replicaCount: 1
             containerSpec:
-              # CORREGIDO: Cambiado :latest por :py310 que sí existe en Artifact Registry
               imageUri: us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-3:py310
               command:
                 - sh
                 - -c
                 - |
                   gsutil cp gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py ./train_pipeline.py
-                  python3 train_pipeline.py "\$@"
+                  python3 train_pipeline.py "$@"
               args:
                 - "--data-source=bigquery"
                 - "--data-path=tfm-ms-3.analytics_warehouse.df_clean"
@@ -120,6 +119,7 @@ jobs:
           --region=${{ env.REGION }} \
           --display-name="credit-risk-training-pipeline" \
           --config=vertex_config.yaml \
-          --service-account=${{ env.VERTEX_SA }}
+          --service-account=${{ env.VERTEX_SA }} \
+          --no-block
 
         echo "[*] Job enviado con éxito. Vertex AI iniciará el entrenamiento usando los datos de BigQuery."
