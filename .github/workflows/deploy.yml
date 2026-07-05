@@ -73,43 +73,18 @@ jobs:
           --image=europe-west1-docker.pkg.dev/tfm-ms-3/preprocess-repo/preprocess-pipeline:latest \
           --region=europe-west1
 
-        # ==========================================
-    # FASE D: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
-    # ==========================================
+        
     - name: Submit Model Training Job to Vertex AI
       run: |
         echo "[*] Subiendo el script train_pipeline.py al bucket de staging..."
         gsutil cp ./entrenamiento/train_pipeline.py gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py
 
-        echo "[*] Generando archivo de configuración temporal para Vertex AI..."
-        # Usamos printf para construir el YAML evitando conflictos de interpretación de llaves ${{}}
-        printf "workerPoolSpecs:\n" > vertex_config.yaml
-        printf "  - machineSpec:\n" >> vertex_config.yaml
-        printf "      machineType: n1-standard-4\n" >> vertex_config.yaml
-        printf "    replicaCount: 1\n" >> vertex_config.yaml
-        printf "    containerSpec:\n" >> vertex_config.yaml
-        printf "      imageUri: europe-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-3:py310\n" >> vertex_config.yaml
-        printf "      command:\n" >> vertex_config.yaml
-        printf "        - sh\n" >> vertex_config.yaml
-        printf "        - -c\n" >> vertex_config.yaml
-        printf "        - |\n" >> vertex_config.yaml
-        printf "          gsutil cp gs://%s/src/train_pipeline.py ./train_pipeline.py\n" "${{ env.GCS_BUCKET }}" >> vertex_config.yaml
-        printf "          python3 train_pipeline.py \"\$@\"\n" >> vertex_config.yaml
-        printf "      args:\n" >> vertex_config.yaml
-        printf "        - \"--data-source=bigquery\"\n" >> vertex_config.yaml
-        printf "        - \"--data-path=%s.analytics_warehouse.df_clean\"\n" "${{ env.PROJECT_ID }}" >> vertex_config.yaml
-        printf "        - \"--gcp-project=%s\"\n" "${{ env.PROJECT_ID }}" >> vertex_config.yaml
-        printf "        - \"--gcs-bucket=%s\"\n" "${{ env.GCS_BUCKET }}" >> vertex_config.yaml
-        printf "        - \"--gcp-location=%s\"\n" "${{ env.REGION }}" >> vertex_config.yaml
-
-        echo "[*] Contenido del archivo de configuración generado:"
-        cat vertex_config.yaml
-
         echo "[*] Lanzando el Custom Job de Entrenamiento en Vertex AI..."
         gcloud ai custom-jobs create \
           --region=${{ env.REGION }} \
           --display-name="credit-risk-training-pipeline" \
-          --config=vertex_config.yaml \
-          --service-account=${{ env.VERTEX_SA }}
+          --service-account=${{ env.VERTEX_SA }} \
+          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=europe-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-3:py310,command=sh,-c,gsutil cp gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py ./train_pipeline.py && python3 train_pipeline.py \"\$@\"" \
+          --args="--data-source=bigquery,--data-path=tfm-ms-3.analytics_warehouse.df_clean,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}"
 
         echo "[*] Job enviado con éxito. Vertex AI iniciará el entrenamiento usando los datos de BigQuery."
