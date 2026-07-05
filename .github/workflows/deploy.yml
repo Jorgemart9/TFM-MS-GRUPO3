@@ -139,6 +139,6 @@ jobs:
           --no-source \
           --region=${{ env.REGION }} \
           --config=cloudbuild-export.yaml \
-          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild-evaluator@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
 
         echo "[*] Cloud Build lanzada correctamente."
