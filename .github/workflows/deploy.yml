@@ -92,34 +92,34 @@ jobs:
         gsutil cp ./entrenamiento/train_pipeline.py gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py
 
         echo "[*] Generando archivo de configuración temporal para Vertex AI..."
-        # Nota el '-' en <<-'EOF', esto limpia los espacios/tabuladores iniciales de cada línea en Bash
-        cat <<-'EOF' > vertex_config.yaml
-        workerPoolSpecs:
-          - machineSpec:
-              machineType: n1-standard-4
-            replicaCount: 1
-            containerSpec:
-              imageUri: us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-3:py310
-              command:
-                - sh
-                - -c
-                - |
-                  gsutil cp gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py ./train_pipeline.py
-                  python3 train_pipeline.py "$@"
-              args:
-                - "--data-source=bigquery"
-                - "--data-path=tfm-ms-3.analytics_warehouse.df_clean"
-                - "--gcp-project=${{ env.PROJECT_ID }}"
-                - "--gcs-bucket=${{ env.GCS_BUCKET }}"
-                - "--gcp-location=${{ env.REGION }}"
-        EOF
+        cat <<'EOF' > vertex_config.yaml
+workerPoolSpecs:
+  - machineSpec:
+      machineType: n1-standard-4
+    replicaCount: 1
+    containerSpec:
+      # Confirmado con tu región europea
+      imageUri: europe-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-3:py310
+      command:
+        - sh
+        - -c
+        - |
+          gsutil cp gs://${{ env.GCS_BUCKET }}/src/train_pipeline.py ./train_pipeline.py
+          python3 train_pipeline.py "$@"
+      args:
+        - "--data-source=bigquery"
+        - "--data-path=tfm-ms-3.analytics_warehouse.df_clean"
+        - "--gcp-project=${{ env.PROJECT_ID }}"
+        - "--gcs-bucket=${{ env.GCS_BUCKET }}"
+        - "--gcp-location=${{ env.REGION }}"
+EOF
 
         echo "[*] Lanzando el Custom Job de Entrenamiento en Vertex AI..."
+        # CORREGIDO: Eliminamos --no-block ya que no es soportado y gcloud lo gestiona por defecto
         gcloud ai custom-jobs create \
           --region=${{ env.REGION }} \
           --display-name="credit-risk-training-pipeline" \
           --config=vertex_config.yaml \
-          --service-account=${{ env.VERTEX_SA }} \
-          --no-block
+          --service-account=${{ env.VERTEX_SA }}
 
         echo "[*] Job enviado con éxito. Vertex AI iniciará el entrenamiento usando los datos de BigQuery."
