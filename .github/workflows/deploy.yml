@@ -9,9 +9,9 @@ on:
 env:
   PROJECT_ID: "tfm-ms-3"
   REGION: "europe-west1"
-  WIF_PROVIDER: "projects/1076362823794/locations/global/workloadIdentityPools/github/providers/github-provider"
-  WIF_SERVICE_ACCOUNT: "sa-github-deployer@tfm-ms-3.iam.gserviceaccount.com"
-
+  WIF_PROVIDER: 'projects/1076362823794/locations/global/workloadIdentityPools/github-wif-pool/providers/github-provider'
+  WIF_SERVICE_ACCOUNT: 'sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com'
+  
 jobs:
   deploy-mlops:
     runs-on: ubuntu-latest
