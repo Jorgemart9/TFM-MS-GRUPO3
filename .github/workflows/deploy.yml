@@ -71,7 +71,7 @@ jobs:
 
     - name: Build and Push Export Metrics Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest ./visualizacion
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest ./validacion
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
 
     # ==========================================
