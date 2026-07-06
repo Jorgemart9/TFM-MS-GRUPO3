@@ -114,9 +114,9 @@ jobs:
         echo "JOB_ID=$JOB_ID" >> $GITHUB_OUTPUT
         echo "[*] ID del Job extraído con éxito: $JOB_ID"
 
-# ==========================================
-# FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (CLOUD BUILD)
-# ==========================================
+    # ==========================================
+    # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (CLOUD BUILD)
+    # ==========================================
     - name: Trigger Cloud Build
       run: |
         echo "[*] Generando configuración temporal de Cloud Build..."
@@ -144,3 +144,50 @@ jobs:
           --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild-evaluator@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
 
         echo "[*] Cloud Build lanzada correctamente."
+
+    # ==========================================
+    # FASE E: DESPLIEGUE CONTINUO (CD CON TERRAFORM)
+    # ==========================================
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.7"
+
+    - name: Terraform Init
+      run: |
+        cd terraform
+        terraform init
+
+    - name: Terraform Plan
+      run: |
+        cd terraform
+        terraform plan
+
+    - name: Terraform Apply
+      run: |
+        cd terraform
+        terraform apply -auto-approve
+
+    # ==========================================
+    # FASE F: REGISTRO Y DESPLIEGUE DEL MODELO (OPERACIONES MLOPS)
+    # ==========================================
+    - name: Register Model in Vertex AI Registry
+      run: |
+        echo "[*] Registrando el modelo entrenado en Vertex AI..."
+        gcloud ai models upload \
+          --region=${{ env.REGION }} \
+          --display-name="credit_risk_model" \
+          --artifact-uri="gs://${{ env.GCS_BUCKET }}/credit_risk_model/v1" \
+          --container-image-uri="gcr.io/cloud-aiplatform/prediction/tf2-cpu.2-8:latest"
+
+    - name: Deploy Model to Vertex AI Endpoint
+      run: |
+        echo "[*] Desplegando el modelo en el endpoint creado por Terraform..."
+        
+        # Usamos el nombre del endpoint que definiste en Terraform
+        gcloud ai endpoints deploy-model "credit-risk-endpoint" \
+          --region=${{ env.REGION }} \
+          --model="credit_risk_model" \
+          --display-name="credit_risk_deployed_v1" \
+          --machine-type="n1-standard-2" \
+          --traffic-split="0=100"
