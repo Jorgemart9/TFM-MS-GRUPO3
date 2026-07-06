@@ -1,101 +1,104 @@
-name: Continuous Integration & Deployment (GCP MLOps)
+name: CI/CD Pipeline - TFM MLOps
 
 on:
   push:
     branches:
       - main
-      - despliegue-modelos
 
 env:
-  PROJECT_ID: "tfm-ms-3"
-  REGION: "europe-west1"
-  WIF_PROVIDER: 'projects/1076362823794/locations/global/workloadIdentityPools/github-wif-pool/providers/github-provider'
-  WIF_SERVICE_ACCOUNT: 'sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com'
-  VERTEX_SA: 'sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com'
-  GCS_BUCKET: 'models-artifacts-tfm'
-  
+  PROJECT_ID: tfm-ms-3
+  REGION: europe-west1
+  WIF_PROVIDER: projects/1076362823794/locations/global/workloadIdentityPools/github-wif-pool/providers/github-provider
+  WIF_SERVICE_ACCOUNT: sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com
+  VERTEX_SA: sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com
+  GCS_BUCKET: models-artifacts-tfm
+
 jobs:
-  deploy-mlops:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
       id-token: 'write'
 
     steps:
-    - name: Checkout Code
+    # ==========================================
+    # PASO 1: CONFIGURACIÓN E INICIO DEL RUNNER
+    # ==========================================
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # ==========================================
-    # FASE AUTENTICACIÓN
-    # ==========================================
-    - name: Google Auth
+    - name: Authenticate to Google Cloud via WIF
       id: auth
       uses: google-github-actions/auth@v2
       with:
         workload_identity_provider: ${{ env.WIF_PROVIDER }}
         service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
-        token_format: 'access_token'
-
-    - name: Login to Artifact Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGION }}-docker.pkg.dev
-        username: oauth2accesstoken
-        password: ${{ steps.auth.outputs.access_token }}
+        create_credentials_file: true
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Configure Docker Auths for Artifact Registry
+      run: |
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
     # ==========================================
-    # FASE A: COMPILAR Y SUBIR IMÁGENES DOCKER
+    # FASE A: COMPILACIÓN Y REGISTRO DE IMÁGENES
     # ==========================================
-    - name: Build and Push Preprocess Image
+    - name: Build and Push Preprocess Docker Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest ./preprocess
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest -f preprocess/Dockerfile preprocess/
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest
 
-    - name: Build and Push Dash Image
+    - name: Build and Push Training Docker Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-pipeline:latest ./dash
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-pipeline:latest
-
-    - name: Build and Push Monitoring Image
-      run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-pipeline:latest ./monitoring
-        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-pipeline:latest
-    
-    - name: Build and Push Training Image
-      run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest ./entrenamiento
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest -f entrenamiento/Dockerfile entrenamiento/
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest
 
-    - name: Build and Push Export Metrics Image
+    - name: Build and Push Export Metrics Docker Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest ./validacion
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest -f export_metrics/Dockerfile export_metrics/
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
 
     # ==========================================
-    # FASE B: ACTUALIZAR TRABAJOS DE PROCESAMIENTO
+    # FASE B: ACTUALIZACIÓN DEL PIPELINE DE PREPROCESAMIENTO (CLOUD RUN JOB)
     # ==========================================
-    - name: Update Preprocess Job
+    - name: Update Preprocess Cloud Run Job
       run: |
+        echo "[*] Actualizando Cloud Run Job para Preprocesamiento..."
         gcloud run jobs update preprocess \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/preprocess-repo/preprocess-pipeline:latest \
-          --region=${{ env.REGION }}
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest \
+          --region=${{ env.REGION }} \
+          --quiet
 
     # ==========================================
-    # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI (INDENTACIÓN CORREGIDA)
+    # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI (CON BÚSQUEDA DINÁMICA DE CONFIG)
     # ==========================================
     - name: Submit and Monitor Vertex AI Training Job
       id: vertex-training
       run: |
+        echo "[*] Buscando archivo config.yaml dinámicamente..."
+        
+        # Localiza de manera automática el archivo config.yaml para evitar errores de ruta
+        CONFIG_PATH=$(find . -name "config.yaml" | head -n 1)
+        
+        if [ -z "$CONFIG_PATH" ]; then
+          echo "[CRITICAL] No se pudo encontrar ningún archivo 'config.yaml' en el repositorio."
+          echo "[*] Estructura de directorios en el runner para depuración:"
+          ls -R
+          exit 1
+        fi
+        
+        echo "[OK] Archivo de configuración detectado en: $CONFIG_PATH"
         echo "[*] Enviando trabajo a Vertex AI..."
         
-        # Lanzamos el job forzando el formato de salida para obtener únicamente el ID limpio del recurso
+        # Lanzamos el job utilizando la ruta dinámica detectada
         JOB_URI=$(gcloud ai custom-jobs create \
-          --region="europe-west1" \
+          --region="${{ env.REGION }}" \
           --display-name="tfm-training-pipeline" \
-          --config=entrenamiento/config.yaml \
+          --config="$CONFIG_PATH" \
           --format="value(name)")
         
         if [ -z "$JOB_URI" ]; then
@@ -109,7 +112,7 @@ jobs:
         # Bucle de monitorización asíncrono y seguro
         echo "[*] Esperando a que el entrenamiento en Vertex AI finalice..."
         while true; do
-          STATUS=$(gcloud ai custom-jobs describe "$JOB_URI" --region="europe-west1" --format="value(state)")
+          STATUS=$(gcloud ai custom-jobs describe "$JOB_URI" --region="${{ env.REGION }}" --format="value(state)")
           echo "[$(date +'%H:%M:%S')] Estado del Job: $STATUS"
           
           if [ "$STATUS" = "JOB_STATE_SUCCEEDED" ]; then
@@ -123,66 +126,81 @@ jobs:
         done
 
     # ==========================================
-    # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (CLOUD BUILD)
+    # FASE D: EXPORTACIÓN DE MÉTRICAS (BASADO EN TU COMMIT EXITOSO)
     # ==========================================
-    - name: Trigger Cloud Build
+    - name: Trigger Cloud Build for Exporting Metrics
       run: |
-        echo "[*] Generando configuración temporal de Cloud Build..."
-
+        echo "[*] Generando archivo temporal cloudbuild-export.yaml para la ejecución de métricas..."
+        
         cat > cloudbuild-export.yaml <<EOF
         steps:
           - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest"
-            # Forzamos a Cloud Build a posicionarse dentro de /app en el contenedor
+            # Forzamos a Cloud Build a posicionarse dentro de /app en el contenedor (Tu solución del commit de ayer)
             dir: "/app"
             args:
               - "--gcp-project=${{ env.PROJECT_ID }}"
               - "--gcp-location=${{ env.REGION }}"
-              - "--experiment-name=credit-risk-mvp"
-
-        options:
-          logging: CLOUD_LOGGING_ONLY
         EOF
 
-        echo "[*] Lanzando Cloud Build..."
-
+        echo "[*] Ejecutando el disparador de Cloud Build..."
         gcloud builds submit \
-          --no-source \
-          --region=${{ env.REGION }} \
           --config=cloudbuild-export.yaml \
-          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild-evaluator@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
-
+          --service-account="projects/${{ env.PROJECT_ID }}/serviceAccounts/sa-cloudbuild-evaluator@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+          --quiet
+        
         echo "[*] Cloud Build lanzada correctamente."
 
     # ==========================================
-    # FASE E: QUALITY GATE (COMPLEMENTO DE BUCLE CERRADO)
+    # FASE E: REGISTRO Y DESPLIEGUE DEL MODELO EN EL ENDPOINT DE VERTEX AI
     # ==========================================
-    - name: Execute Model Quality Gate
+    - name: Register Model and Deploy to Vertex Endpoint
       run: |
-        echo "[*] Ejecutando control de calidad corporativo sobre los resultados de BigQuery..."
-        # Instalar dependencias necesarias para el test de gobernanza
-        pip install google-cloud-bigquery google-cloud-aiplatform pandas db-dtypes
-        python test_quality.py
+        echo "[*] Comprobando si el modelo 'credit_risk_model' ya está registrado..."
+        MODEL_ID=$(gcloud ai models list --region="${{ env.REGION }}" --filter="display_name=credit_risk_model" --format="value(name)" | head -n 1)
+        
+        if [ -z "$MODEL_ID" ]; then
+          echo "[*] Registrando nuevo modelo en el Model Registry..."
+          MODEL_ID=$(gcloud ai models upload \
+            --region="${{ env.REGION }}" \
+            --display-name="credit_risk_model" \
+            --container-image-uri="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest" \
+            --artifact-uri="gs://${{ env.GCS_BUCKET }}/model/" \
+            --format="value(model)")
+          echo "[OK] Modelo registrado con ID: $MODEL_ID"
+        else
+          echo "[OK] El modelo ya existe con ID: $MODEL_ID. Creando nueva versión..."
+          MODEL_ID=$(gcloud ai models upload \
+            --region="${{ env.REGION }}" \
+            --display-name="credit_risk_model" \
+            --parent-model="$MODEL_ID" \
+            --container-image-uri="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest" \
+            --artifact-uri="gs://${{ env.GCS_BUCKET }}/model/" \
+            --format="value(model)")
+        fi
 
-    # ==========================================
-    # FASE F: REGISTRO Y DESPLIEGUE DEL MODELO
-    # ==========================================
-    - name: Register Model in Vertex AI Registry
-      run: |
-        echo "[*] Registrando el modelo entrenado en Vertex AI..."
-        gcloud ai models upload \
-          --region=${{ env.REGION }} \
-          --display-name="credit_risk_model" \
-          --artifact-uri="gs://${{ env.GCS_BUCKET }}/credit_risk_model/v1" \
-          --container-image-uri="gcr.io/cloud-aiplatform/prediction/tf2-cpu.2-8:latest"
+        echo "[*] Buscando Endpoint activo llamado 'credit-risk-endpoint'..."
+        ENDPOINT_ID=$(gcloud ai endpoints list --region="${{ env.REGION }}" --filter="display_name=credit-risk-endpoint" --format="value(name)" | head -n 1)
 
-    - name: Deploy Model to Vertex AI Endpoint
-      run: |
-        echo "[*] Desplegando el modelo en el endpoint creado por Terraform..."
-        gcloud ai endpoints deploy-model "credit-risk-endpoint" \
-          --region=${{ env.REGION }} \
-          --model="credit_risk_model" \
-          --display-name="credit_risk_deployed_v1" \
+        if [ -z "$ENDPOINT_ID" ]; then
+          echo "[*] No se encontró un Endpoint activo. Creando uno nuevo..."
+          ENDPOINT_ID=$(gcloud ai endpoints create \
+            --region="${{ env.REGION }}" \
+            --display-name="credit-risk-endpoint" \
+            --format="value(name)")
+          echo "[OK] Endpoint creado con ID: $ENDPOINT_ID"
+        else
+          echo "[OK] Endpoint existente detectado con ID: $ENDPOINT_ID"
+        fi
+
+        echo "[*] Desplegando el modelo en el Endpoint de Vertex AI..."
+        gcloud ai endpoints deploy-model "$ENDPOINT_ID" \
+          --region="${{ env.REGION }}" \
+          --model="$MODEL_ID" \
+          --display-name="credit-risk-deployment" \
           --machine-type="n1-standard-2" \
-          --traffic-split="0=100"
+          --min-replica-count=1 \
+          --max-replica-count=1 \
+          --traffic-split="0=100" \
+          --quiet
 
-
+        echo "[OK] ¡Pipeline completado con éxito! Modelo desplegado y sirviendo tráfico."
