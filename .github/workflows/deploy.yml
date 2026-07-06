@@ -75,7 +75,7 @@ jobs:
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
 
     # ==========================================
-    # FASE B: ACTUALIZAR Y DESPLEGAR EN CLOUD RUN
+    # FASE B: ACTUALIZAR TRABAJOS DE PROCESAMIENTO
     # ==========================================
     - name: Update Preprocess Job
       run: |
@@ -84,52 +84,44 @@ jobs:
           --region=${{ env.REGION }}
 
     # ==========================================
-    # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI (CON ESPERA)
+    # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI (INDENTACIÓN CORREGIDA)
     # ==========================================
-    - name: Submit Model Training Job to Vertex AI
-      id: vertex_job
+    - name: Submit and Monitor Vertex AI Training Job
+      id: vertex-training
       run: |
         echo "[*] Enviando trabajo a Vertex AI..."
         
-        gcloud ai custom-jobs create \
-          --region=${{ env.REGION }} \
-          --display-name="credit-risk-training-pipeline" \
-          --service-account=${{ env.VERTEX_SA }} \
-          --worker-pool-spec="machine-type=n1-standard-4,container-image-uri=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest" \
-          --args="--data-source=bigquery,--data-path=${{ env.PROJECT_ID }}.analytics_warehouse.df_completo_cr_clean_v2,--gcp-project=${{ env.PROJECT_ID }},--gcs-bucket=${{ env.GCS_BUCKET }},--gcp-location=${{ env.REGION }}" > job_output.txt 2>&1
+        # Lanzamos el job forzando el formato de salida para obtener únicamente el ID limpio del recurso
+        JOB_URI=$(gcloud ai custom-jobs create \
+          --region="europe-west1" \
+          --display-name="tfm-training-pipeline" \
+          --config=entrenamiento/config.yaml \
+          --format="value(name)")
         
-        cat job_output.txt
-        
-        # Extraer únicamente el número final del ID del Job
-        JOB_NUM=$(grep -oP "customJobs/\d+" job_output.txt | cut -d'/' -f2 || true)
-        if [ -z "$JOB_NUM" ]; then
-          JOB_NUM=$(grep -o "customJobs/[0-9]*" job_output.txt | head -n 1 | cut -d'/' -f2)
+        if [ -z "$JOB_URI" ]; then
+          echo "[CRITICAL] No se pudo obtener el ID del Job de Vertex AI."
+          exit 1
         fi
         
-        echo "[*] ID numérico del Job extraído: $JOB_NUM"
-        echo "JOB_ID=$JOB_NUM" >> $GITHUB_OUTPUT
+        echo "[*] Job URI Detectado: $JOB_URI"
+        echo "job_id=$JOB_URI" >> $GITHUB_ENV
 
-        # ==========================================
-        # CONTROL DE ESPERA (POLLING)
-        # ==========================================
+        # Bucle de monitorización asíncrono y seguro
         echo "[*] Esperando a que el entrenamiento en Vertex AI finalice..."
         while true; do
-          # Consultamos el estado actual del Job
-          STATUS=$(gcloud ai custom-jobs describe $JOB_NUM --region=${{ env.REGION }} --format="value(state)")
-          echo "[*] Estado actual del Job: $STATUS"
-
+          STATUS=$(gcloud ai custom-jobs describe "$JOB_URI" --region="europe-west1" --format="value(state)")
+          echo "[$(date +'%H:%M:%S')] Estado del Job: $STATUS"
+          
           if [ "$STATUS" = "JOB_STATE_SUCCEEDED" ]; then
-            echo "[+] ¡Entrenamiento completado con éxito!"
+            echo "[OK] ¡Entrenamiento completado con éxito!"
             break
           elif [ "$STATUS" = "JOB_STATE_FAILED" ] || [ "$STATUS" = "JOB_STATE_CANCELLED" ]; then
-            echo "[-] Error: El trabajo de entrenamiento falló o fue cancelado."
+            echo "[ERROR] El entrenamiento falló o fue cancelado. Estado: $STATUS"
             exit 1
           fi
-
-          # Espera 30 segundos antes de volver a preguntar
           sleep 30
         done
-    
+
     # ==========================================
     # FASE D: EVALUACIÓN Y EXPORTACIÓN DE MÉTRICAS (CLOUD BUILD)
     # ==========================================
@@ -161,9 +153,18 @@ jobs:
 
         echo "[*] Cloud Build lanzada correctamente."
 
+    # ==========================================
+    # FASE E: QUALITY GATE (COMPLEMENTO DE BUCLE CERRADO)
+    # ==========================================
+    - name: Execute Model Quality Gate
+      run: |
+        echo "[*] Ejecutando control de calidad corporativo sobre los resultados de BigQuery..."
+        # Instalar dependencias necesarias para el test de gobernanza
+        pip install google-cloud-bigquery google-cloud-aiplatform pandas db-dtypes
+        python test_quality.py
 
     # ==========================================
-    # FASE F: REGISTRO Y DESPLIEGUE DEL MODELO (OPERACIONES MLOPS)
+    # FASE F: REGISTRO Y DESPLIEGUE DEL MODELO
     # ==========================================
     - name: Register Model in Vertex AI Registry
       run: |
@@ -177,11 +178,11 @@ jobs:
     - name: Deploy Model to Vertex AI Endpoint
       run: |
         echo "[*] Desplegando el modelo en el endpoint creado por Terraform..."
-        
-        # Usamos el nombre del endpoint que definiste en Terraform
         gcloud ai endpoints deploy-model "credit-risk-endpoint" \
           --region=${{ env.REGION }} \
           --model="credit_risk_model" \
           --display-name="credit_risk_deployed_v1" \
           --machine-type="n1-standard-2" \
           --traffic-split="0=100"
+
+
