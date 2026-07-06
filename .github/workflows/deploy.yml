@@ -124,6 +124,8 @@ jobs:
         cat > cloudbuild-export.yaml <<EOF
         steps:
           - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest"
+            # Forzamos a Cloud Build a posicionarse dentro de /app en el contenedor
+            dir: "/app"
             args:
               - "--gcp-project=${{ env.PROJECT_ID }}"
               - "--gcp-location=${{ env.REGION }}"

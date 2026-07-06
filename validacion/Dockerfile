@@ -1,15 +1,13 @@
-# 1. Imagen oficial ultra ligera de Python
-FROM python:3.10-slim
+FROM python:3.9-slim
 
-# 2. Directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# 3. Copiar las dependencias e instalarlas
+# Copiar e instalar dependencias
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Copiar únicamente tu script de ejecución
+# Copiar el script de métricas al contenedor
 COPY export_metrics.py .
 
-# 5. Ejecutar el script por defecto
+# Establecer el punto de entrada predeterminado
 ENTRYPOINT ["python", "export_metrics.py"]
