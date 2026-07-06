@@ -59,8 +59,9 @@ jobs:
 
     - name: Build and Push Export Metrics Docker Image
       run: |
-        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest -f export_metrics/Dockerfile export_metrics/
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest -f validacion/Dockerfile validacion/
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
+
 
     # ==========================================
     # FASE B: ACTUALIZACIÓN DEL PIPELINE DE PREPROCESAMIENTO (CLOUD RUN JOB)
