@@ -64,3 +64,12 @@ resource "google_storage_bucket_iam_member" "preprocess_write_clean" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
 }
+
+# Permiso público para el Dashboard de Cloud Run
+resource "google_cloud_run_service_iam_member" "public_dash" {
+  location = google_cloud_run_v2_service.dash_service.location
+  project  = var.project_id
+  service  = google_cloud_run_v2_service.dash_service.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
