@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.calibration import CalibratedClassifierCV
 from google.cloud import bigquery
 
-# Intentar importar las librerías de GCP
+# Intentar importar las librerías de GCP de forma segura
 gcp_active = False
 try:
     from google.cloud import aiplatform
@@ -105,7 +105,7 @@ parser.add_argument("--grid-search", action="store_true", help="Activar la búsq
 args = parser.parse_args()
 
 # -------------------------------------------------------------------
-# FUNCIONES AUXILIARES DE GCP (Inicializadas con argumentos correctos)
+# FUNCIONES AUXILIARES DE GCP
 # -------------------------------------------------------------------
 def upload_to_gcs(local_file, bucket_name, gcs_path):
     print(f"[*] Subiendo {local_file} a gs://{bucket_name}/{gcs_path}...")
@@ -118,7 +118,6 @@ def upload_to_gcs(local_file, bucket_name, gcs_path):
 def load_dataset(source_type, data_path, sample_fraction):
     if source_type == "bigquery":
         print(f"[*] Cargando datos desde BigQuery: {data_path} (Muestra: {sample_fraction*100}%)...")
-        # El cliente utiliza las credenciales de la cuenta de servicio del Job de Vertex AI
         client = bigquery.Client(project=args.gcp_project)
         if sample_fraction < 1.0:
             query = f"SELECT * FROM `{data_path}` WHERE RAND() < {sample_fraction}"
@@ -148,7 +147,6 @@ def load_dataset(source_type, data_path, sample_fraction):
 ai_initialized = False
 if gcp_active:
     try:
-        # Inicializar el SDK de Vertex AI
         aiplatform.init(
             project=args.gcp_project,
             location=args.gcp_location,
@@ -171,7 +169,6 @@ df = load_dataset(args.data_source, args.data_path, args.sample_fraction)
 # -------------------------------------------------------------------
 print("[*] Limpiando datos e ingeniería de características...")
 
-# Filtrar target
 target_col = 'estado_prestamo'
 clase_0 = ['Pagado completamente']
 clase_1 = ['Incobrable', 'Default', 'Retraso de 31 a 120 días']
@@ -180,7 +177,6 @@ df = df[df[target_col].isin(clase_0 + clase_1)].copy()
 df['target'] = np.where(df[target_col].isin(clase_1), 1, 0)
 y = df['target']
 
-# Aplicar ingeniería de características y preprocesamiento avanzado
 df = preprocess_and_feature_engineering(df)
 
 features_numericas = [
@@ -209,6 +205,7 @@ features_categoricas = [
 
 cols_to_use = [c for c in features_numericas + features_categoricas if c in df.columns]
 X = df[cols_to_use]
+
 # Partición Train/Test
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 print(f"[*] Train shape: {X_train.shape}, Test shape: {X_test.shape}")
@@ -219,7 +216,7 @@ X_train_base, X_calib, y_train_base, y_train_calib = train_test_split(
 )
 print(f"[*] Split Calibración: Train Base shape: {X_train_base.shape}, Calib shape: {X_calib.shape}")
 
-# Calculamos el desbalanceo para XGBoost/LightGBM (basado en el conjunto de entrenamiento base)
+# Calculamos el desbalanceo para XGBoost/LightGBM
 spw = len(y_train_base[y_train_base == 0]) / len(y_train_base[y_train_base == 1])
 print(f"[*] Ratio de desbalanceo calculado (Negativos/Positivos): {spw:.2f}")
 
@@ -233,7 +230,7 @@ numeric_transformer = Pipeline(steps=[
 
 categorical_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
 ])
 
 preprocessor = ColumnTransformer(
@@ -535,11 +532,12 @@ try:
         json.dump(shap_out, f, indent=4)
 except Exception as e:
     print(f"[!] Error al calcular valores SHAP: {e}")
+    shap_out = {"error": str(e)}
     with open("shap_results.json", "w") as f:
-        json.dump({"error": str(e)}, f)
+        json.dump(shap_out, f)
 
 # -------------------------------------------------------------------
-# 7. EXPORTACIÓN DEL MODELO AL MODEL REGISTRY DE VERTEX AI
+# 7. EXPORTACIÓN DEL MODELO AL MODEL REGISTRY DE VERTEX AI Y GCS
 # -------------------------------------------------------------------
 print(f"\n[*] FINALIZADO. El mejor modelo ha sido: {best_global_name} con F1-Score de {best_global_score:.4f}")
 
@@ -548,20 +546,24 @@ joblib.dump(best_global_model, "model.joblib")
 if ai_initialized and args.gcs_bucket:
     try:
         gcs_model_dir = f"models/{best_global_name}"
-        # Sube el artefacto al bucket de modelos
-        upload_to_gcs("model.joblib", args.gcs_bucket, f"{gcs_model_dir}/model.joblib")
         
-        if os.path.exists("shap_results.json"):
+        # 1. Subida del modelo y explicabilidad a la carpeta de artefactos de Vertex
+        upload_to_gcs("model.joblib", args.gcs_bucket, f"{gcs_model_dir}/model.joblib")
+        if "error" not in shap_out:
             upload_to_gcs("shap_results.json", args.gcs_bucket, f"{gcs_model_dir}/explainability/shap_results.json")
+            
+            # Sincronización directa con el Dashboard de Gobernanza
+            print("[*] Sincronizando shap_results.json con el Dashboard de Gobernanza en GCS...")
+            upload_to_gcs("shap_results.json", args.gcs_bucket, "dash/shap_results.json")
             
         print(f"[*] Registrando modelo '{best_global_name}' en Vertex AI Model Registry...")
         gcs_uri = f"gs://{args.gcs_bucket}/{gcs_model_dir}/"
         
-        # El modelo se registrará en Vertex AI para ser desplegado más adelante en un Endpoint si se requiere
+        # Registramos el modelo apuntando al contenedor optimizado para scikit-learn en europe-west1
         model = aiplatform.Model.upload(
             display_name=f"Champion_{best_global_name}_MVP_Balanced",
             artifact_uri=gcs_uri,
-            serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest"
+            serving_container_image_uri="europe-west1-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest"
         )
         print(f"[*] Modelo registrado con éxito en Vertex AI Model Registry. ID: {model.resource_name}")
     except Exception as e:
