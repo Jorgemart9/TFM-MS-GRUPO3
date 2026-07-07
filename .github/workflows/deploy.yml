@@ -12,6 +12,9 @@ env:
   WIF_SERVICE_ACCOUNT: sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com
   VERTEX_SA: sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com
   GCS_BUCKET: models-artifacts-tfm
+  # Variables adicionales añadidas del trigger:
+  BQ_DATASET_DASH: gubernatura_modelos
+  BQ_DATASET_RAW: analytics_warehouse
 
 jobs:
   deploy:
@@ -61,6 +64,16 @@ jobs:
       run: |
         docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest -f validacion/Dockerfile validacion/
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
+    
+    - name: Build and Push Export monitoring Docker Image
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring/test_model_quality:latest -f monitoring/Dockerfile monitoring/
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring/test_model_quality:latest
+    
+    - name: Build and Push Export dashboard Docker Image
+      run: |
+        docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash/app:latest -f dash/Dockerfile dash/
+        docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash/app:latest
 
     # ==========================================
     # FASE B: ACTUALIZACIÓN DEL PIPELINE DE PREPROCESAMIENTO (CLOUD RUN JOB)
@@ -127,7 +140,7 @@ jobs:
         done
 
     # ==========================================
-    # FASE D: EXPORTACIÓN DE MÉTRICAS (BASADO EN TU COMMIT EXITOSO)
+    # FASE D: trigger 
     # ==========================================
     - name: Trigger Cloud Build for Exporting Metrics
       run: |
@@ -135,4 +148,43 @@ jobs:
         
         cat > cloudbuild-export.yaml <<EOF
         steps:
-          - name: "${{ env.REGION }}-docker.pkg
+          - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-app:latest"
+            entrypoint: "python"
+            args: ["main.py"] # Ajusta el script de entrada si es diferente
+            env:
+              - 'PROJECT_ID=${{ env.PROJECT_ID }}'
+              - 'LOCATION=${{ env.REGION }}'
+              - 'WIF_PROVIDER=${{ env.WIF_PROVIDER }}'
+              - 'WIF_SERVICE_ACCOUNT=${{ env.WIF_SERVICE_ACCOUNT }}'
+              - 'VERTEX_SA=${{ env.VERTEX_SA }}'
+              - 'GCS_BUCKET=${{ env.GCS_BUCKET }}'
+              - 'BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }}'
+              - 'BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}'
+        EOF
+
+        echo "[*] Lanzando Cloud Build directo para Exportación..."
+        gcloud builds submit --config=cloudbuild-export.yaml --project=${{ env.PROJECT_ID }}
+
+    # 2. Segundo Trigger: Pruebas de Calidad (Estructura clonada del primero)
+    - name: Trigger Cloud Build for Quality Tests
+      run: |
+        echo "[*] Generando archivo temporal cloudbuild-test.yaml para lanzar pruebas de calidad..."
+        
+        cat > cloudbuild-test.yaml <<EOF
+        steps:
+          - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-app:latest"
+            entrypoint: "python"
+            args: ["-m", "pytest", "tests/"]
+            env:
+              - 'PROJECT_ID=${{ env.PROJECT_ID }}'
+              - 'LOCATION=${{ env.REGION }}'
+              - 'WIF_PROVIDER=${{ env.WIF_PROVIDER }}'
+              - 'WIF_SERVICE_ACCOUNT=${{ env.WIF_SERVICE_ACCOUNT }}'
+              - 'VERTEX_SA=${{ env.VERTEX_SA }}'
+              - 'GCS_BUCKET=${{ env.GCS_BUCKET }}'
+              - 'BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }}'
+              - 'BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}'
+        EOF
+
+        echo "[*] Lanzando Cloud Build directo para Tests de Calidad..."
+        gcloud builds submit --config=cloudbuild-test.yaml --project=${{ env.PROJECT_ID }}

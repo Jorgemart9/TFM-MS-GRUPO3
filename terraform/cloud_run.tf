@@ -11,11 +11,10 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
         # Ajustado a 'preprocess-pipeline' según tu docker push real
         image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.preprocess_repo.name}/preprocess-pipeline:latest"
         
-        # ---> AQUÍ AÑADIMOS LOS NUEVOS RECURSOS DE MEMORIA Y CPU <---
         resources {
           limits = {
-            memory = "8Gi" # 4 Gigabytes de memoria RAM
-            cpu    = "2"   # 2 CPUs virtuales para agilizar los cálculos
+            memory = "32 Gi"
+            cpu    = "8"
           }
         }
 

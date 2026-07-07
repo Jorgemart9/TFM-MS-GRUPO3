@@ -28,6 +28,12 @@ resource "google_project_iam_member" "preprocess_bq_editor" {
   member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }
 
+#Escribe los resultados
+resource "google_storage_bucket_iam_member" "preprocess_bucket_writer" {
+  bucket = google_storage_bucket.models_bucket.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
+}
 # CLOUD RUN - DASHBOARD
 
 # Leer imagen Docker
@@ -105,8 +111,7 @@ resource "google_storage_bucket_iam_member" "vertex_storage_admin" {
   member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
-
-#CLOUD BUILD 
+# CLOUD BUILD 
 
 # Permiso para que Cloud Build pueda subir (push) imágenes a "training-repo"
 resource "google_artifact_registry_repository_iam_member" "cb_writer" {
@@ -150,10 +155,6 @@ resource "google_project_iam_member" "cb_gcs_admin" {
   role    = "roles/storage.objectAdmin"
   member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
 }
-
-# ==============================================================================
-# 3. PERMISOS IAM ADICIONALES PARA LA CUENTA DE ENTRENAMIENTO DE VERTEX AI
-# ==============================================================================
 
 # Permiso para que la cuenta de Vertex AI pueda descargar (pull) imágenes de "training-repo"
 resource "google_artifact_registry_repository_iam_member" "vertex_reader" {
