@@ -6,10 +6,10 @@ WORKDIR /app
 
 # Copia los archivos de requirements y el script al contenedor
 COPY requirements.txt requirements.txt
-COPY test_model_quality.py .
+COPY main.py .
 
 # Instala las dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Comando por defecto al ejecutar el contenedor
-ENTRYPOINT ["python", "test_model_quality.py"]
+ENTRYPOINT ["python", "main.py"]
