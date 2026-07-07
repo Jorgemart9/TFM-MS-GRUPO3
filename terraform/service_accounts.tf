@@ -30,9 +30,16 @@ resource "google_service_account" "sa_cloudbuild" {
   project      = var.project_id
 }
 
-#CUENTA DE SERVICIO PARA CLOUD BUILD
+#CUENTA DE SERVICIO PARA CLOUD BUILD EXPORT METRICS
 resource "google_service_account_iam_member" "github_act_as_cloudbuild" {
   service_account_id = google_service_account.sa_cloudbuild.id
   role   = "roles/iam.serviceAccountUser"
   member = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
+# CUENTA DE SERVICIO PARA TEST QUALITY
+resource "google_service_account" "sa_cloudbuild_v2" {
+  project      = var.project_id
+  account_id   = "sa-mlops-evaluator-v2" # <-- Identificador único nuevo en GCP
+  display_name = "Cloud Build Evaluator and Drift Controller V2"
 }

@@ -105,50 +105,61 @@ resource "google_storage_bucket_iam_member" "vertex_storage_admin" {
   member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
+
 #CLOUD BUILD 
-# 1. Permiso para leer experimentos, pipelines y gestionar modelos/endpoints en Vertex AI
-resource "google_project_iam_member" "cloudbuild_vertex_user" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
-}
 
-# 2. Permiso para ejecutar consultas e insertar filas con los resultados en BigQuery
-resource "google_project_iam_member" "cloudbuild_bq_editor" {
-  project = var.project_id
-  role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
-}
-
-resource "google_project_iam_member" "cloudbuild_bq_job_user" {
-  project = var.project_id
-  role    = "roles/bigquery.jobUser"
-  member  = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
-}
-
-# 3. Permiso para leer los artefactos del modelo guardados en tu Bucket de modelos
-resource "google_storage_bucket_iam_member" "cloudbuild_storage_viewer" {
-  bucket = google_storage_bucket.models_bucket.name 
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
-}
-
-# 4. Permiso necesario para generar logs de la ejecución en Cloud Logging
-resource "google_project_iam_member" "cloudbuild_logging" {
-  project = var.project_id
-  role    = "roles/logging.logWriter"
-  member  = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
-}
-
-resource "google_project_iam_member" "github_cloudbuild_editor" {
-  project = var.project_id
-  role    = "roles/cloudbuild.builds.editor"
-  member  = "serviceAccount:${google_service_account.github_deployer.email}"
-}
-
-resource "google_artifact_registry_repository_iam_member" "cloudbuild_training_repo_reader" {
+# Permiso para que Cloud Build pueda subir (push) imágenes a "training-repo"
+resource "google_artifact_registry_repository_iam_member" "cb_writer" {
+  project    = var.project_id
   location   = google_artifact_registry_repository.training_repo.location
   repository = google_artifact_registry_repository.training_repo.name
-  role   = "roles/artifactregistry.reader"
-  member = "serviceAccount:${google_service_account.sa_cloudbuild.email}"
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+# Permisos en BigQuery: Escribir métricas/drift (gubernatura_modelos) y leer datos de entrenamiento (analytics_warehouse)
+resource "google_project_iam_member" "cb_bq_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+resource "google_project_iam_member" "cb_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.user"
+  member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+# Permiso para lanzar entrenamientos (CustomJobs) en Vertex AI
+resource "google_project_iam_member" "cb_vertex_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+# Permiso crítico: Permitir a Cloud Build actuar en nombre de la cuenta de entrenamiento de Vertex AI
+resource "google_service_account_iam_member" "cb_act_as_vertex_sa" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+# Permiso para leer y escribir artefactos en Cloud Storage (modelos, shap values, logs)
+resource "google_project_iam_member" "cb_gcs_admin" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+# ==============================================================================
+# 3. PERMISOS IAM ADICIONALES PARA LA CUENTA DE ENTRENAMIENTO DE VERTEX AI
+# ==============================================================================
+
+# Permiso para que la cuenta de Vertex AI pueda descargar (pull) imágenes de "training-repo"
+resource "google_artifact_registry_repository_iam_member" "vertex_reader" {
+  project    = var.project_id
+  location   = google_artifact_registry_repository.training_repo.location
+  repository = google_artifact_registry_repository.training_repo.name
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
 }

@@ -1,19 +1,15 @@
-FROM python:3.10-slim
+# Usa una imagen base de Python
+FROM python:3.9-slim
 
+# Configura el directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias esenciales del sistema operativo requeridas por XGBoost y LightGBM
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+# Copia los archivos de requirements y el script al contenedor
+COPY requirements.txt requirements.txt
+COPY test_model_quality.py .
 
-# Copiar e instalar requerimientos usando la caché de Docker de forma eficiente
-COPY requirements.txt .
+# Instala las dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el script de ejecución
-COPY main.py .
-
-# Ejecución nativa para Cloud Run Jobs (Sin servidores web intermedios)
-CMD ["python", "main.py"]
+# Comando por defecto al ejecutar el contenedor
+ENTRYPOINT ["python", "test_model_quality.py"]
