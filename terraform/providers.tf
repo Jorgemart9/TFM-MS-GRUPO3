@@ -1,20 +1,27 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.5.7"
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 5.11.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.11.0"
     }
   }
-  # Estado remoto compartido en GCS. Mismo bucket que environments/dev
-  # (gs://tfm-ms-3-tfstate) pero con prefix distinto para no colisionar.
   backend "gcs" {
-    bucket = "tfm-ms-3-tfstate"
-    prefix = "tfm/app"
+    bucket = "models-artifacts-tfm"
+    prefix = "terraform/state"
   }
 }
 
 provider "google" {
-  project = var.project_id
-  region  = var.region
+  project = "tfm-ms-3"
+  region  = "europe-west1"
+}
+
+provider "google-beta" {
+  project = "tfm-ms-3"
+  region  = "europe-west1"
 }

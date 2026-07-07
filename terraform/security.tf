@@ -1,4 +1,3 @@
-# Red principal
 resource "google_compute_network" "vpc" {
   name                    = "gemma-vpc"
   auto_create_subnetworks = false
@@ -6,7 +5,6 @@ resource "google_compute_network" "vpc" {
 }
 
 
-# Conexión Privada para Cloud SQL (VPC Peering interno)
 resource "google_compute_global_address" "private_ip_alloc" {
   name          = "gemma-private-ip-alloc"
   purpose       = "VPC_PEERING"

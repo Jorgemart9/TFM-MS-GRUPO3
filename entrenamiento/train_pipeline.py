@@ -15,8 +15,9 @@ from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.calibration import CalibratedClassifierCV
+from google.cloud import bigquery
 
-# Intentar importar las librerías de GCP
+# Intentar importar las librerías de GCP de forma segura
 gcp_active = False
 try:
     from google.cloud import aiplatform
@@ -92,14 +93,14 @@ def preprocess_and_feature_engineering(df_in):
 # 1. PARSEADO DE ARGUMENTOS
 # -------------------------------------------------------------------
 parser = argparse.ArgumentParser(description="Pipeline de Entrenamiento de Riesgo Crediticio para Vertex AI / Local")
-parser.add_argument("--data-source", type=str, choices=["local", "bigquery"], default="local", help="Origen de datos: 'local' (CSV) o 'bigquery'")
-parser.add_argument("--data-path", type=str, default="df_completo_cr.csv", help="Ruta del archivo CSV o nombre de la tabla de BigQuery")
-parser.add_argument("--sample-fraction", type=float, default=0.10, help="Fracción de muestreo del dataset")
-parser.add_argument("--gcp-project", type=str, default=None, help="ID del Proyecto de Google Cloud")
-parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP (por ejemplo, europe-west1)")
-parser.add_argument("--gcs-bucket", type=str, default=None, help="Bucket de GCS para almacenar los artefactos del modelo")
+parser.add_argument("--data-source", type=str, choices=["local", "bigquery"], default="bigquery", help="Origen de datos: 'local' (CSV) o 'bigquery'")
+parser.add_argument("--data-path", type=str, default="tfm-ms-3.analytics_warehouse.df_completo_cr_clean_v2", help="Ruta de BigQuery (proyecto.dataset.tabla) o CSV local")
+parser.add_argument("--sample-fraction", type=float, default=1.0, help="Fracción de muestreo del dataset")
+parser.add_argument("--gcp-project", type=str, default="tfm-ms-3", help="ID del Proyecto de Google Cloud")
+parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP")
+parser.add_argument("--gcs-bucket", type=str, default="models-artifacts-tfm", help="Bucket para almacenar modelos (creado en Terraform)")
 parser.add_argument("--experiment-name", type=str, default="credit-risk-mvp", help="Nombre del experimento en Vertex AI")
-parser.add_argument("--grid-search", action="store_true", help="Activar la búsqueda de hiperparámetros (RandomizedSearchCV) en lugar de usar parámetros predefinidos")
+parser.add_argument("--grid-search", action="store_true", help="Activar la búsqueda de hiperparámetros")
 
 args = parser.parse_args()
 
@@ -117,7 +118,6 @@ def upload_to_gcs(local_file, bucket_name, gcs_path):
 def load_dataset(source_type, data_path, sample_fraction):
     if source_type == "bigquery":
         print(f"[*] Cargando datos desde BigQuery: {data_path} (Muestra: {sample_fraction*100}%)...")
-        from google.cloud import bigquery
         client = bigquery.Client(project=args.gcp_project)
         if sample_fraction < 1.0:
             query = f"SELECT * FROM `{data_path}` WHERE RAND() < {sample_fraction}"
@@ -147,7 +147,6 @@ def load_dataset(source_type, data_path, sample_fraction):
 ai_initialized = False
 if gcp_active:
     try:
-        # Inicializar el SDK de Vertex AI
         aiplatform.init(
             project=args.gcp_project,
             location=args.gcp_location,
@@ -162,7 +161,7 @@ if gcp_active:
 else:
     print("[*] Iniciando Pipeline en modo Local Fallback...")
 
-# Cargar Datos
+# Cargar Datos limpios directamente desde BigQuery
 df = load_dataset(args.data_source, args.data_path, args.sample_fraction)
 
 # -------------------------------------------------------------------
@@ -170,7 +169,6 @@ df = load_dataset(args.data_source, args.data_path, args.sample_fraction)
 # -------------------------------------------------------------------
 print("[*] Limpiando datos e ingeniería de características...")
 
-# Filtrar target
 target_col = 'estado_prestamo'
 clase_0 = ['Pagado completamente']
 clase_1 = ['Incobrable', 'Default', 'Retraso de 31 a 120 días']
@@ -179,7 +177,6 @@ df = df[df[target_col].isin(clase_0 + clase_1)].copy()
 df['target'] = np.where(df[target_col].isin(clase_1), 1, 0)
 y = df['target']
 
-# Aplicar ingeniería de características y preprocesamiento avanzado
 df = preprocess_and_feature_engineering(df)
 
 features_numericas = [
@@ -208,6 +205,7 @@ features_categoricas = [
 
 cols_to_use = [c for c in features_numericas + features_categoricas if c in df.columns]
 X = df[cols_to_use]
+
 # Partición Train/Test
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 print(f"[*] Train shape: {X_train.shape}, Test shape: {X_test.shape}")
@@ -218,7 +216,7 @@ X_train_base, X_calib, y_train_base, y_train_calib = train_test_split(
 )
 print(f"[*] Split Calibración: Train Base shape: {X_train_base.shape}, Calib shape: {X_calib.shape}")
 
-# Calculamos el desbalanceo para XGBoost/LightGBM (basado en el conjunto de entrenamiento base)
+# Calculamos el desbalanceo para XGBoost/LightGBM
 spw = len(y_train_base[y_train_base == 0]) / len(y_train_base[y_train_base == 1])
 print(f"[*] Ratio de desbalanceo calculado (Negativos/Positivos): {spw:.2f}")
 
@@ -232,7 +230,7 @@ numeric_transformer = Pipeline(steps=[
 
 categorical_transformer = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
 ])
 
 preprocessor = ColumnTransformer(
@@ -306,7 +304,6 @@ for model_name, config in models.items():
         ('classifier', config["model"])
     ])
     
-    # Búsqueda condicional de hiperparámetros o entrenamiento directo (congelado)
     if args.grid_search:
         print(f"[*] Ejecutando búsqueda de hiperparámetros con RandomizedSearchCV (20 iteraciones, 3 folds)...")
         search = RandomizedSearchCV(
@@ -322,7 +319,7 @@ for model_name, config in models.items():
         best_pipeline = search.best_estimator_
         best_params = search.best_params_
     else:
-        print(f"[*] Entrenando directamente con los hiperparámetros óptimos conocidos (ahorro de costes en Vertex AI)...")
+        print(f"[*] Entrenando directamente con los hiperparámetros óptimos conocidos...")
         if model_name == "CatBoost":
             optimal_params = {
                 "classifier__subsample": 0.8,
@@ -363,28 +360,20 @@ for model_name, config in models.items():
         best_pipeline = pipeline
         best_params = optimal_params
     
-    # Extraemos el preprocesador y el clasificador del mejor pipeline
     preprocessor_step = best_pipeline.named_steps['preprocessor']
     classifier_step = best_pipeline.named_steps['classifier']
-    
-    # Transformamos el set de calibración
     X_calib_trans = preprocessor_step.transform(X_calib)
     
-    # Calibramos las probabilidades usando Platt Scaling (sigmoid) con cv='prefit'
-    from sklearn.calibration import CalibratedClassifierCV
     calibrated_classifier = CalibratedClassifierCV(estimator=classifier_step, cv='prefit', method='sigmoid')
     calibrated_classifier.fit(X_calib_trans, y_train_calib)
     
-    # Ensamblamos el pipeline final calibrado
     calibrated_pipeline = Pipeline(steps=[
         ('preprocessor', preprocessor_step),
         ('classifier', calibrated_classifier)
     ])
     
-    # Predecir probabilidades en calibración para buscar el umbral de decisión óptimo
     y_calib_prob = calibrated_classifier.predict_proba(X_calib_trans)[:, 1]
     
-    # Búsqueda del umbral en el rango [0.05, 0.95] que maximiza el F1-Score sobre el conjunto de calibración
     best_threshold = 0.5
     best_f1_calib = 0.0
     for thresh in np.linspace(0.05, 0.95, 91):
@@ -394,11 +383,9 @@ for model_name, config in models.items():
             best_f1_calib = score_f1
             best_threshold = thresh
 
-    # Aplicamos el umbral óptimo sobre el conjunto de test independiente
     y_prob = calibrated_pipeline.predict_proba(X_test)[:, 1]
     y_pred = (y_prob >= best_threshold).astype(int)
     
-    # Almacenamos el umbral óptimo dentro del propio objeto del pipeline serializado
     calibrated_pipeline.decision_threshold = float(best_threshold)
     
     metrics = {
@@ -411,10 +398,7 @@ for model_name, config in models.items():
     
     print(f"[{model_name}] Mejores parámetros: {best_params}")
     print(f"[{model_name}] Umbral óptimo de F1 (Calibración): {best_threshold:.2f} (F1 Calib = {best_f1_calib:.4f})")
-    print(f"[{model_name}] Métricas Calibradas en Test (con Umbral {best_threshold:.2f}): ROC-AUC = {metrics['roc_auc']:.4f}, Recall = {metrics['recall']:.4f}, F1 = {metrics['f1']:.4f}")
     
-    # Guardar localmente para fallback
-    # Convertimos los parámetros a string para evitar problemas de tipos complejos
     cleaned_params = {k.replace("classifier__", ""): str(v) for k, v in best_params.items()}
     cleaned_params["decision_threshold"] = f"{best_threshold:.2f}"
     local_runs_summary.append({
@@ -423,7 +407,6 @@ for model_name, config in models.items():
         "metrics": metrics
     })
     
-    # Registro en Vertex AI Experiments
     if ai_initialized:
         try:
             run_uid = f"{model_name.lower()}-{random.randint(10000, 99999)}"
@@ -434,7 +417,6 @@ for model_name, config in models.items():
         except Exception as e:
             print(f"[!] Error al registrar en Vertex AI: {e}")
             
-    # Selección del campeón: Mejor F1-Score. En caso de empate, desempate por ROC-AUC.
     is_better = False
     if metrics["f1"] > best_global_score:
         is_better = True
@@ -452,16 +434,14 @@ for model_name, config in models.items():
         best_global_model = calibrated_pipeline
         best_global_name = model_name
 
-# Escribir el log local de runs para fallback offline
 with open("local_runs.json", "w") as f:
     json.dump({
         "champion_name": best_global_name,
         "runs": local_runs_summary
     }, f, indent=4)
-print("[*] Historial de ejecuciones locales guardado en local_runs.json.")
 
 # -------------------------------------------------------------------
-# 6. EXPLICABILIDAD DEL MODELO CON SHAP (GLOBAL Y LOCAL)
+# 6. EXPLICABILIDAD DEL MODELO CON SHAP
 # -------------------------------------------------------------------
 try:
     import shap
@@ -469,21 +449,18 @@ try:
     preprocessor = best_global_model.named_steps['preprocessor']
     classifier = best_global_model.named_steps['classifier']
     
-    # Muestreo para SHAP (por velocidad y estabilidad)
     X_test_sample = X_test.sample(n=min(500, len(X_test)), random_state=42)
     X_test_sample_trans = preprocessor.transform(X_test_sample)
     if hasattr(X_test_sample_trans, "toarray"):
         X_test_sample_trans = X_test_sample_trans.toarray()
         
     feature_names = [f.replace('num__', '').replace('cat__', '') for f in preprocessor.get_feature_names_out()]
-    # Extraer estimador base si está calibrado para usar TreeExplainer nativo
     if isinstance(classifier, CalibratedClassifierCV):
         base_tree_classifier = classifier.estimator
     else:
         base_tree_classifier = classifier
         
     model_type = type(base_tree_classifier).__name__
-    print(f"[*] Tipo de modelo base campeón para SHAP: {model_type}")
     
     if "LGBM" in model_type or "XGB" in model_type or "CatBoost" in model_type:
         explainer = shap.TreeExplainer(base_tree_classifier)
@@ -492,7 +469,6 @@ try:
         explainer = shap.Explainer(base_tree_classifier, X_test_sample_trans)
         shap_values = explainer(X_test_sample_trans)
         
-    # Extraer clase 1 (Default/Impago)
     if isinstance(shap_values, list):
         shap_values_class1 = shap_values[1] if len(shap_values) == 2 else shap_values[0]
     elif hasattr(shap_values, "values"):
@@ -501,7 +477,6 @@ try:
     else:
         shap_values_class1 = shap_values[:, :, 1] if len(shap_values.shape) == 3 else shap_values
         
-    # 1. Importancia global
     mean_abs_shap = np.abs(shap_values_class1).mean(axis=0)
     sorted_global_indices = np.argsort(mean_abs_shap)[::-1]
     
@@ -512,7 +487,6 @@ try:
             "importance": round(float(mean_abs_shap[idx]), 4)
         })
         
-    # 2. Explicación local (Cliente de Alto Riesgo vs Cliente de Bajo Riesgo)
     probs = best_global_model.predict_proba(X_test_sample)[:, 1]
     high_risk_idx = int(np.argmax(probs))
     low_risk_idx = int(np.argmin(probs))
@@ -520,7 +494,6 @@ try:
     def get_local_expl(idx, risk_label):
         row_trans = X_test_sample_trans[idx]
         row_shap = shap_values_class1[idx]
-        
         sorted_indices = np.argsort(np.abs(row_shap))[::-1]
         
         factors = []
@@ -557,45 +530,45 @@ try:
     
     with open("shap_results.json", "w") as f:
         json.dump(shap_out, f, indent=4)
-        
-    print("[*] Valores SHAP calculados y exportados a shap_results.json exitosamente.")
 except Exception as e:
     print(f"[!] Error al calcular valores SHAP: {e}")
+    shap_out = {"error": str(e)}
     with open("shap_results.json", "w") as f:
-        json.dump({"error": str(e)}, f)
+        json.dump(shap_out, f)
 
 # -------------------------------------------------------------------
-# 7. EXPORTACIÓN DEL MODELO CAMPEÓN A VERTEX AI MODEL REGISTRY
+# 7. EXPORTACIÓN DEL MODELO AL MODEL REGISTRY DE VERTEX AI Y GCS
 # -------------------------------------------------------------------
-print(f"\n[*] FINALIZADO. El mejor modelo (por F1-Score) ha sido: {best_global_name} con F1-Score de {best_global_score:.4f}")
+print(f"\n[*] FINALIZADO. El mejor modelo ha sido: {best_global_name} con F1-Score de {best_global_score:.4f}")
 
-# Serializar el modelo localmente en model.joblib
 joblib.dump(best_global_model, "model.joblib")
-print("[*] Modelo campeón guardado localmente como model.joblib.")
 
 if ai_initialized and args.gcs_bucket:
     try:
-        # Subir model.joblib al bucket de GCS
         gcs_model_dir = f"models/{best_global_name}"
-        upload_to_gcs("model.joblib", args.gcs_bucket, f"{gcs_model_dir}/model.joblib")
         
-        # Opcional: Subir shap_results.json
-        if os.path.exists("shap_results.json"):
+        # 1. Subida del modelo y explicabilidad a la carpeta de artefactos de Vertex
+        upload_to_gcs("model.joblib", args.gcs_bucket, f"{gcs_model_dir}/model.joblib")
+        if "error" not in shap_out:
             upload_to_gcs("shap_results.json", args.gcs_bucket, f"{gcs_model_dir}/explainability/shap_results.json")
+            
+            # Sincronización directa con el Dashboard de Gobernanza
+            print("[*] Sincronizando shap_results.json con el Dashboard de Gobernanza en GCS...")
+            upload_to_gcs("shap_results.json", args.gcs_bucket, "dash/shap_results.json")
             
         print(f"[*] Registrando modelo '{best_global_name}' en Vertex AI Model Registry...")
         gcs_uri = f"gs://{args.gcs_bucket}/{gcs_model_dir}/"
         
-        # Subir y registrar
+        # Registramos el modelo apuntando al contenedor optimizado para scikit-learn en europe-west1
         model = aiplatform.Model.upload(
             display_name=f"Champion_{best_global_name}_MVP_Balanced",
             artifact_uri=gcs_uri,
-            serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest"
+            serving_container_image_uri="europe-west1-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest"
         )
         print(f"[*] Modelo registrado con éxito en Vertex AI Model Registry. ID: {model.resource_name}")
     except Exception as e:
         print(f"[!] Error al registrar modelo en Vertex AI Model Registry: {e}")
 else:
-    print("[*] Omitiendo registro en Vertex AI Model Registry (modo local o sin bucket GCS especificado).")
+    print("[*] Omitiendo registro en Vertex AI Model Registry.")
 
 print("\n[*] Ejecución del pipeline concluida con éxito.")

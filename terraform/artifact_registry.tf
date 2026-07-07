@@ -1,4 +1,4 @@
-# Repositorio para el microservicio de Preprocesamiento de datos
+# 1.Repositorio para el Preprocesamiento de datos
 resource "google_artifact_registry_repository" "preprocess_repo" {
   location      = var.region
   repository_id = "preprocess-repo"
@@ -7,7 +7,7 @@ resource "google_artifact_registry_repository" "preprocess_repo" {
   depends_on    = [google_project_service.enabled_apis]
 }
 
-# Repositorio para la aplicación del Dashboard
+# 2.Repositorio para la aplicación del Dashboard
 resource "google_artifact_registry_repository" "dash_repo" {
   location      = var.region
   repository_id = "dash-repo"
@@ -16,11 +16,24 @@ resource "google_artifact_registry_repository" "dash_repo" {
   depends_on    = [google_project_service.enabled_apis]
 }
 
-# Repositorio para el microservicio de Monitoreo
+# 3.Repositorio para el microservicio de Monitoreo
 resource "google_artifact_registry_repository" "monitoring_repo" {
   location      = var.region
   repository_id = "monitoring-repo"
   format        = "DOCKER"
   description   = "Repositorio Docker para el Cloud Run de Monitoreo"
   depends_on    = [google_project_service.enabled_apis]
+}
+
+#4. Repo de VERTEXAI
+resource "google_artifact_registry_repository" "training_repo" {
+  project       = var.project_id
+  location      = "europe-west1"     
+  repository_id = "training-repo"      
+  description   = "Repositorio Docker para el pipeline de entrenamiento en Vertex AI"
+  format        = "DOCKER"
+
+  docker_config {
+    immutable_tags = false
+  }
 }

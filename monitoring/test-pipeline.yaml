@@ -1,0 +1,12 @@
+steps:
+  # Paso 1: Compilar la imagen Docker local usando tu Dockerfile
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/test-monitoring:latest', '.']
+
+  # Paso 2: Ejecutar el contenedor recién creado en la nube para ver si funciona
+  - name: 'europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/test-monitoring:latest'
+    # Si tu Dockerfile ya tiene un ENTRYPOINT/CMD para ejecutar el script, puedes dejar los args vacíos.
+    # Si quieres forzar la ejecución de tu script con variables de entorno simuladas, puedes añadir parámetros aquí:
+    env:
+      - 'PROJECT_ID=tfm-ms-3'
+      - 'LOCATION=europe-west1'

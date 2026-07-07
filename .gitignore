@@ -36,12 +36,6 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# OJO: .terraform.lock.hcl SÍ debe versionarse (fija versiones de
-# providers). Por eso NO está en este .gitignore.
-
-# =====================================================================
-#  PYTHON
-# =====================================================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -60,21 +54,12 @@ env/
 .coverage
 htmlcov/
 
-# =====================================================================
-#  DATOS  (evita subir datasets pesados o sensibles)
-# =====================================================================
 data/
 *.csv
 *.csv.gz
 *.gz
 *.parquet
-# Si quieres versionar una muestra pequeña, ponla en sample_data/ y
-# descomenta la siguiente linea:
-# !sample_data/
 
-# =====================================================================
-#  SISTEMA OPERATIVO / EDITOR
-# =====================================================================
 .DS_Store
 Thumbs.db
 .idea/
@@ -82,9 +67,6 @@ Thumbs.db
 *.swp
 
 
-# =====================================================================
-#  MODELOS, MÉTRICAS Y OTROS ARTIFACTOS
-# =====================================================================
 data/
 models/
 metrics/
