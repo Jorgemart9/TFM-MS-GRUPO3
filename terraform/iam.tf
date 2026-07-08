@@ -164,3 +164,9 @@ resource "google_artifact_registry_repository_iam_member" "vertex_reader" {
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
 }
+
+resource "google_storage_bucket_iam_member" "sa_cloudbuild_bucket_admin" {
+  bucket = "models-artifacts-tfm"
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}

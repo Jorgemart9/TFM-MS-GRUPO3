@@ -76,7 +76,7 @@ jobs:
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest
 
     # ==========================================
-    # FASE B: ACTUALIZACIÓN DEL PIPELINE DE PREPROCESAMIENTO (CLOUD RUN JOB)
+    # FASE B: CLOUD RUN 
     # ==========================================
     - name: Update Preprocess Cloud Run Job
       run: |
@@ -86,10 +86,38 @@ jobs:
           --region=${{ env.REGION }} \
           --quiet
 
+    - name: Update Test Model Quality Cloud Run Job
+      run: |
+        echo "[*] Actualizando Cloud Run Job para Monitoreo de Calidad..."
+        gcloud run jobs update test_model_quality \
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest \
+          --region=${{ env.REGION }} \
+          --quiet
+
+    - name: Update DASHBOARD
+      run: |
+        echo "[*] Actualizando Cloud Run Job para DASBHOARD
+        gcloud run jobs update test_model_quality \
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest \
+          --region=${{ env.REGION }} \
+          --quiet
+    
+    - name: Deploy Dashboard Cloud Run
+      run: |
+        echo "[*] Desplegando nueva versión del Dashboard..."
+        gcloud run deploy dashboard \
+          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest \
+          --region=${{ env.REGION }} \
+          --platform=managed \
+          --quiet
+
+        echo "[OK] Dashboard actualizado correctamente."
+
     # ==========================================
     # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI (CON BÚSQUEDA DINÁMICA DE CONFIG)
     # ==========================================
     - name: Submit and Monitor Vertex AI Training Job
+      if: ${{ false }}
       run: |
         echo "[*] Generando archivo de configuración config.yaml dinámicamente..."
         
