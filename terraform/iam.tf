@@ -44,6 +44,13 @@ resource "google_artifact_registry_repository_iam_member" "dash_registry_reader"
   member     = "serviceAccount:${google_service_account.sa_dash.email}"
 }
 
+# Permiso para leer los artefactos del bucket (metrics.json y shap_results.json)
+resource "google_storage_bucket_iam_member" "dash_storage_reader" {
+  bucket = google_storage_bucket.models_bucket.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.sa_dash.email}"
+}
+
 resource "google_cloud_run_service_iam_member" "public_invoker" {
   service = google_cloud_run_v2_service.dash_service.name
   location = google_cloud_run_v2_service.dash_service.location
