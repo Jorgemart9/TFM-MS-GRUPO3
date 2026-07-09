@@ -423,7 +423,7 @@ async def receive_quality_results(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -------------------------------------------------------------------
+#---------------------------------------------------------------
 # MONTAR FRONTEND E INTERFAZ DE USUARIO
 # -------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
