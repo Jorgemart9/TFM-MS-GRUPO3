@@ -1,0 +1,37 @@
+name: MLOps Scheduled Monitoring
+
+on:
+  schedule:
+    # Ejecutar todos los domingos a las 05:00 AM UTC (07:00 AM hora española de verano)
+    - cron: '0 5 * * 0'
+  workflow_dispatch: # Permitir ejecución manual desde la pestaña Actions de GitHub
+
+env:
+  PROJECT_ID: tfm-ms-3
+  REGION: europe-west1
+
+jobs:
+  run-monitoring:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Execute Monitoring Cloud Run Job
+        run: |
+          echo "[*] Iniciando ejecución programada del Job de Monitoreo..."
+          # Ejecutamos el Job y no fallamos el workflow si da código 1 (ya que el exit code 1 indica detección de drift y es correcto)
+          gcloud run jobs execute monitoring \
+            --region=${{ env.REGION }} \
+            --wait || echo "[!] Monitoreo finalizado (puede haber detectado Data Drift y lanzado reentrenamiento)."
