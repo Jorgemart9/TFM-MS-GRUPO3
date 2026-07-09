@@ -79,16 +79,16 @@ jobs:
     # ==========================================
     - name: Update Preprocess Cloud Run Job
       run: |
-        echo "[*] Actualizando Cloud Run Job para Preprocesamiento..."
+        echo "[*] Actualizando Cloud Run Job de Preprocesamiento..."
         gcloud run jobs update preprocess \
           --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest \
           --region=${{ env.REGION }} \
           --quiet
 
-    - name: Update Test Model Quality Cloud Run Job
+    - name: Update Monitoring Cloud Run Job
       run: |
-        echo "[*] Actualizando Cloud Run Job para Monitoreo de Calidad..."
-        gcloud run jobs update test_model_quality \
+        echo "[*] Actualizando Cloud Run Job de Monitorización..."
+        gcloud run jobs update monitoring \
           --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest \
           --region=${{ env.REGION }} \
           --quiet
@@ -102,7 +102,8 @@ jobs:
           --platform=managed \
           --allow-unauthenticated \
           --quiet
-        echo "[OK] Dashboard actualizado correctamente."
+
+    echo "[OK] Dashboard actualizado correctamente."
 
     # ==========================================
     # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
