@@ -130,6 +130,7 @@ actual_f1 = best_metrics.get("f1", 0.80)
 
 sim_roc = [round(actual_roc + 0.015, 3), round(actual_roc + 0.012, 3), round(actual_roc + 0.010, 3), round(actual_roc + 0.007, 3), round(actual_roc + 0.005, 3), round(actual_roc + 0.002, 3), round(actual_roc, 3)]
 sim_f1 = [round(actual_f1 + 0.020, 3), round(actual_f1 + 0.018, 3), round(actual_f1 + 0.015, 3), round(actual_f1 + 0.012, 3), round(actual_f1 + 0.008, 3), round(actual_f1 + 0.004, 3), round(actual_f1, 3)]
+evolution_labels = ["Día -25", "Día -20", "Día -15", "Día -10", "Día -5", "Día -1", "Hoy"]
 
 drift_labels = ['importe_solicitado', 'puntuacion_buro', 'antiguedad_laboral', 'ratio_deuda_ingresos', 'ingresos_anuales']
 drift_psi = [0.27, 0.12, 0.08, 0.05, 0.04]
@@ -169,13 +170,25 @@ shap_data = {
     }
 }
 
-if os.path.exists("shap_results.json"):
-    try:
-        with open("shap_results.json", "r") as f:
-            shap_data = json.load(f)
-        print("[*] Datos SHAP cargados con éxito desde shap_results.json.")
-    except Exception as e:
-        print(f"[!] Error leyendo shap_results.json: {e}")
+# Intentar descargar shap_results.json desde GCS para evitar hardcoding
+try:
+    print(f"[*] Intentando descargar shap_results.json desde GCS ({args.gcs_bucket}/dash/shap_results.json)...")
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(args.gcs_bucket)
+    blob_shap = bucket.blob("dash/shap_results.json")
+    if blob_shap.exists():
+        shap_data = json.loads(blob_shap.download_as_text())
+        print("[*] Datos SHAP cargados con éxito desde GCS.")
+    else:
+        # Fallback local
+        if os.path.exists("shap_results.json"):
+            with open("shap_results.json", "r") as f:
+                shap_data = json.load(f)
+            print("[*] Datos SHAP cargados con éxito desde shap_results.json local.")
+        else:
+            print("[!] No se encontró shap_results.json en GCS ni local. Se usa fallback hardcodeado.")
+except Exception as e:
+    print(f"[!] Error cargando SHAP dinámico: {e}. Se conserva fallback.")
 
 # Cargar EDA
 eda_data = {
@@ -208,13 +221,25 @@ eda_data = {
     }
 }
 
-if os.path.exists("eda_results.json"):
-    try:
-        with open("eda_results.json", "r") as f:
-            eda_data = json.load(f)
-        print("[*] Datos EDA cargados con éxito desde eda_results.json.")
-    except Exception as e:
-        print(f"[!] Error leyendo eda_results.json: {e}")
+# Intentar descargar eda_results.json desde GCS para evitar hardcoding
+try:
+    print(f"[*] Intentando descargar eda_results.json desde GCS ({args.gcs_bucket}/preprocess/eda_results.json)...")
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(args.gcs_bucket)
+    blob_eda = bucket.blob("preprocess/eda_results.json")
+    if blob_eda.exists():
+        eda_data = json.loads(blob_eda.download_as_text())
+        print("[*] Datos EDA cargados con éxito desde GCS.")
+    else:
+        # Fallback local
+        if os.path.exists("eda_results.json"):
+            with open("eda_results.json", "r") as f:
+                eda_data = json.load(f)
+            print("[*] Datos EDA cargados con éxito desde eda_results.json local.")
+        else:
+            print("[!] No se encontró eda_results.json en GCS ni local. Se usa fallback hardcodeado.")
+except Exception as e:
+    print(f"[!] Error cargando EDA dinámico: {e}. Se conserva fallback.")
 
 # -------------------------------------------------------------------
 # CREACIÓN DE TABLAS E INSERCIÓN EN BIGQUERY
@@ -230,6 +255,102 @@ try:
     dataset.description = "Dataset para gobernanza MLOps, test quality y metrics."
     dataset = bq_client.create_dataset(dataset, exists_ok=True)
     print(f"[*] Dataset '{dataset_ref}' verificado/creado con éxito.")
+
+    # Calcular PSI real a partir de los datos en BigQuery
+    try:
+        import pandas as pd
+        import numpy as np
+        print("[*] Recuperando datos de df_completo_cr_clean_v2 para calcular el PSI real...")
+        # Seleccionar las columnas necesarias
+        query_data = f"""
+        SELECT fecha_emision, importe_solicitado, puntuacion_crediticia_media, antiguedad_laboral_num, ratio_prestamo_ingresos, ingresos_anuales
+        FROM `analytics_warehouse.df_completo_cr_clean_v2`
+        """
+        df_bq = bq_client.query(query_data).to_dataframe()
+        
+        if not df_bq.empty and 'fecha_emision' in df_bq.columns:
+            # Asegurar tipo datetime para ordenar cronológicamente
+            df_bq['fecha_emision'] = pd.to_datetime(df_bq['fecha_emision'])
+            df_bq = df_bq.sort_values(by='fecha_emision')
+            
+            # Dividir en 80% baseline (entrenamiento) y 20% target (producción/reciente)
+            n_rows = len(df_bq)
+            split_idx = int(n_rows * 0.8)
+            df_baseline = df_bq.iloc[:split_idx]
+            df_target = df_bq.iloc[split_idx:]
+            
+            # Mapear etiquetas con las columnas correspondientes en BigQuery
+            mapping = {
+                'importe_solicitado': 'importe_solicitado',
+                'puntuacion_buro': 'puntuacion_crediticia_media',
+                'antiguedad_laboral': 'antiguedad_laboral_num',
+                'ratio_deuda_ingresos': 'ratio_prestamo_ingresos',
+                'ingresos_anuales': 'ingresos_anuales'
+            }
+            
+            def calculate_real_psi(expected, actual, num_buckets=10):
+                expected = expected.dropna().values
+                actual = actual.dropna().values
+                if len(expected) == 0 or len(actual) == 0:
+                    return 0.0
+                percentiles = np.linspace(0, 100, num_buckets + 1)
+                buckets = np.percentile(expected, percentiles)
+                buckets = np.unique(buckets)
+                if len(buckets) < 2:
+                    return 0.0
+                expected_counts, _ = np.histogram(expected, bins=buckets)
+                actual_counts, _ = np.histogram(actual, bins=buckets)
+                expected_pct = expected_counts / len(expected)
+                actual_pct = actual_counts / len(actual)
+                expected_pct = np.where(expected_pct == 0, 1e-4, expected_pct)
+                actual_pct = np.where(actual_pct == 0, 1e-4, actual_pct)
+                return float(np.sum((actual_pct - expected_pct) * np.log(actual_pct / expected_pct)))
+
+            new_drift_psi = []
+            for feat in drift_labels:
+                col_name = mapping[feat]
+                psi_val = calculate_real_psi(df_baseline[col_name], df_target[col_name])
+                new_drift_psi.append(round(psi_val, 4))
+                print(f"[OK] PSI Real de '{feat}': {round(psi_val, 4)}")
+            
+            drift_psi = new_drift_psi
+
+            # Calcular total_risk y avoided_loss de forma dinámica
+            total_risk = float(df_bq['importe_solicitado'].sum())
+            avoided_loss = total_risk * recall_pct
+            print(f"[OK] Riesgo Total Calculado Dinámicamente: {total_risk}")
+        else:
+            print("[!] La tabla df_completo_cr_clean_v2 está vacía. Se conservan los valores de simulación.")
+    except Exception as psi_err:
+        print(f"[!] Error al calcular el PSI real: {psi_err}. Se usarán los valores por defecto simulados.")
+
+    # Consultar historial para la gráfica de evolución
+    try:
+        query_hist = f"""
+        SELECT f1_score, roc_auc, fecha_registro
+        FROM `{dataset_ref}.t_modelo_campeon_kpis`
+        ORDER BY fecha_registro ASC
+        LIMIT 7
+        """
+        df_hist = bq_client.query(query_hist).to_dataframe()
+        if len(df_hist) >= 2:
+            f1_vals = df_hist['f1_score'].tolist()
+            roc_vals = df_hist['roc_auc'].tolist()
+            
+            if any(x > 1.0 for x in f1_vals):
+                sim_f1 = [round(x / 100.0, 3) for x in f1_vals]
+            else:
+                sim_f1 = [round(x, 3) for x in f1_vals]
+                
+            if any(x > 1.0 for x in roc_vals):
+                sim_roc = [round(x / 100.0, 3) for x in roc_vals]
+            else:
+                sim_roc = [round(x, 3) for x in roc_vals]
+                
+            evolution_labels = [d.strftime('%d/%m %H:%M') for d in df_hist['fecha_registro']]
+            print(f"[OK] Historial de evolución cargado de BigQuery: {len(df_hist)} registros.")
+    except Exception as hist_err:
+        print(f"[!] Error leyendo historial de KPIs: {hist_err}. Se conserva simulación.")
     
     # DDL Declarativas para ejecutar
     ddls = [
@@ -337,8 +458,7 @@ try:
 
     # Limpiar e insertar evolución temporal
     bq_client.query(f"DELETE FROM `{dataset_ref}.t_modelo_evaluacion_temporal` WHERE TRUE").result()
-    semanas = ["Día -25", "Día -20", "Día -15", "Día -10", "Día -5", "Día -1", "Hoy"]
-    for i, sem in enumerate(semanas):
+    for i, sem in enumerate(evolution_labels):
         dml_evo = f"""
         INSERT INTO `{dataset_ref}.t_modelo_evaluacion_temporal` (semana_etiqueta, f1_score, roc_auc)
         VALUES ('{sem}', {sim_f1[i]}, {sim_roc[i]});
@@ -395,7 +515,7 @@ output = {
     },
     "comparison": comparison_data,
     "evolution": {
-        "labels": ["Día -25", "Día -20", "Día -15", "Día -10", "Día -5", "Día -1", "Hoy"],
+        "labels": evolution_labels,
         "roc_auc": sim_roc,
         "f1_score": sim_f1
     },

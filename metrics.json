@@ -34,30 +34,24 @@
     ],
     "evolution": {
         "labels": [
-            "Día -25",
-            "Día -20",
-            "Día -15",
-            "Día -10",
-            "Día -5",
-            "Día -1",
-            "Hoy"
+            "09/07 12:13",
+            "09/07 12:26",
+            "09/07 15:41",
+            "09/07 15:50",
+            "09/07 15:51"
         ],
         "roc_auc": [
-            0.707,
-            0.704,
-            0.702,
-            0.699,
-            0.697,
-            0.694,
+            0.692,
+            0.692,
+            0.692,
+            0.692,
             0.692
         ],
         "f1_score": [
-            0.442,
-            0.44,
-            0.437,
-            0.434,
-            0.43,
-            0.426,
+            0.422,
+            0.422,
+            0.422,
+            0.422,
             0.422
         ]
     },
@@ -70,157 +64,2359 @@
             "ingresos_anuales"
         ],
         "psi": [
-            0.27,
-            0.12,
-            0.08,
-            0.05,
-            0.04
+            0.0151,
+            0.0595,
+            0.0,
+            0.1156,
+            0.0508
         ]
     },
     "business": {
-        "total_risk": 2500000,
-        "avoided_loss": 1615002.035949043,
-        "pipeline_latency": 52,
-        "pipeline_error_rate": 0.01
+        "total_risk": 30934984622.166195,
+        "avoided_loss": 19984025258.740295,
+        "pipeline_latency": 48,
+        "pipeline_error_rate": 0.04
     },
     "shap": {
         "global": [
             {
-                "feature": "puntuacion_buro",
-                "importance": 0.284
+                "feature": "tipo_interes",
+                "importance": 0.3084
             },
             {
-                "feature": "ingresos_anuales",
-                "importance": 0.195
+                "feature": "puntuacion_crediticia_media",
+                "importance": 0.1502
             },
             {
-                "feature": "ratio_deuda_ingresos",
-                "importance": 0.142
+                "feature": "plazo_meses",
+                "importance": 0.1064
             },
             {
-                "feature": "antiguedad_laboral",
-                "importance": 0.091
+                "feature": "ratio_prestamo_ingresos",
+                "importance": 0.0998
             },
             {
-                "feature": "importe_solicitado",
-                "importance": 0.076
+                "feature": "grado_riesgo_num",
+                "importance": 0.0922
+            },
+            {
+                "feature": "importe_solicitado_log",
+                "importance": 0.0862
+            },
+            {
+                "feature": "tipo_vivienda_Hipoteca",
+                "importance": 0.0625
+            },
+            {
+                "feature": "consultas_credito_ultimos_6_meses",
+                "importance": 0.0624
+            },
+            {
+                "feature": "tipo_vivienda_Alquiler",
+                "importance": 0.0492
+            },
+            {
+                "feature": "ingreso_residual_anual",
+                "importance": 0.0395
+            },
+            {
+                "feature": "porcentaje_uso_credito_revolving",
+                "importance": 0.0387
+            },
+            {
+                "feature": "ratio_carga_financiera",
+                "importance": 0.0328
             }
         ],
         "local": {
-            "low_risk": {
-                "probability": 4.2,
-                "factors": [
-                    {
-                        "feature": "puntuacion_buro",
-                        "value": "780 (Excelente)",
-                        "shap": -0.152
-                    },
-                    {
-                        "feature": "ingresos_anuales",
-                        "value": "€65.000",
-                        "shap": -0.084
-                    },
-                    {
-                        "feature": "ratio_deuda_ingresos",
-                        "value": "12%",
-                        "shap": -0.061
-                    }
-                ]
-            },
             "high_risk": {
-                "probability": 72.8,
+                "risk_label": "Alto Riesgo",
+                "probability": 56.42,
                 "factors": [
                     {
-                        "feature": "puntuacion_buro",
-                        "value": "450 (Deficiente)",
-                        "shap": 0.231
+                        "feature": "tipo_interes",
+                        "value": 3.1969,
+                        "shap": 0.9562,
+                        "effect": "Incrementa riesgo"
                     },
                     {
-                        "feature": "ratio_deuda_ingresos",
-                        "value": "62%",
-                        "shap": 0.154
+                        "feature": "ratio_prestamo_ingresos",
+                        "value": 0.0002,
+                        "shap": 0.2374,
+                        "effect": "Incrementa riesgo"
                     },
                     {
-                        "feature": "importe_solicitado",
-                        "value": "€35.000",
-                        "shap": 0.112
+                        "feature": "plazo_meses",
+                        "value": 1.554,
+                        "shap": 0.1603,
+                        "effect": "Incrementa riesgo"
+                    },
+                    {
+                        "feature": "puntuacion_crediticia_media",
+                        "value": -0.5911,
+                        "shap": 0.1197,
+                        "effect": "Incrementa riesgo"
+                    },
+                    {
+                        "feature": "grado_riesgo_num",
+                        "value": 2.2831,
+                        "shap": 0.1166,
+                        "effect": "Incrementa riesgo"
+                    },
+                    {
+                        "feature": "tipo_vivienda_Alquiler",
+                        "value": 1.0,
+                        "shap": 0.1078,
+                        "effect": "Incrementa riesgo"
                     }
-                ]
+                ],
+                "raw_features": {
+                    "importe_solicitado_log": 10.308985993422082,
+                    "ingresos_anuales_log": 11.112462823634855,
+                    "ratio_prestamo_ingresos": 0.4477611940298507,
+                    "puntuacion_crediticia_media": 677.0,
+                    "bancarrotas_publicas": 0.0,
+                    "consultas_credito_ultimos_6_meses": 0.0,
+                    "impago_ultimos_2_anios": 0.0,
+                    "tipo_interes": 28.69,
+                    "porcentaje_uso_credito_revolving": 51.2,
+                    "plazo_meses": 60.0,
+                    "antiguedad_laboral_num": 0.0,
+                    "grado_riesgo_num": 6,
+                    "cuota_mensual_estimada": 643.45,
+                    "ratio_carga_financiera": 0.11524305607378996,
+                    "ingreso_residual_anual": 59278.6,
+                    "alerta_sobreendeudamiento": 0.0,
+                    "finalidad_prestamo": "Tarjeta de crédito",
+                    "tipo_vivienda": "Alquiler"
+                }
+            },
+            "low_risk": {
+                "risk_label": "Bajo Riesgo",
+                "probability": 3.39,
+                "factors": [
+                    {
+                        "feature": "tipo_interes",
+                        "value": -1.5872,
+                        "shap": -1.103,
+                        "effect": "Reduce riesgo"
+                    },
+                    {
+                        "feature": "puntuacion_crediticia_media",
+                        "value": 2.8215,
+                        "shap": -0.8146,
+                        "effect": "Reduce riesgo"
+                    },
+                    {
+                        "feature": "grado_riesgo_num",
+                        "value": -1.3054,
+                        "shap": -0.3491,
+                        "effect": "Reduce riesgo"
+                    },
+                    {
+                        "feature": "ratio_prestamo_ingresos",
+                        "value": -0.0041,
+                        "shap": -0.1627,
+                        "effect": "Reduce riesgo"
+                    },
+                    {
+                        "feature": "ratio_carga_financiera",
+                        "value": -0.2678,
+                        "shap": -0.1147,
+                        "effect": "Reduce riesgo"
+                    },
+                    {
+                        "feature": "consultas_credito_ultimos_6_meses",
+                        "value": -0.6782,
+                        "shap": -0.1112,
+                        "effect": "Reduce riesgo"
+                    }
+                ],
+                "raw_features": {
+                    "importe_solicitado_log": 9.210440366976515,
+                    "ingresos_anuales_log": 11.82959578858072,
+                    "ratio_prestamo_ingresos": 0.0728576216357993,
+                    "puntuacion_crediticia_media": 792.0,
+                    "bancarrotas_publicas": 0.0,
+                    "consultas_credito_ultimos_6_meses": 0.0,
+                    "impago_ultimos_2_anios": 0.0,
+                    "tipo_interes": 5.32,
+                    "porcentaje_uso_credito_revolving": 13.0,
+                    "plazo_meses": 36.0,
+                    "antiguedad_laboral_num": 0.0,
+                    "grado_riesgo_num": 1,
+                    "cuota_mensual_estimada": 292.55555555555554,
+                    "ratio_carga_financiera": 0.025577696015931416,
+                    "ingreso_residual_anual": 133743.33333333334,
+                    "alerta_sobreendeudamiento": 0.0,
+                    "finalidad_prestamo": "Mejora del hogar",
+                    "tipo_vivienda": "Hipoteca"
+                }
             }
         }
     },
     "eda": {
-        "dimensions": {
-            "total_rows_raw_est": 412260,
-            "sample_rows": 41226,
-            "total_columns": 11,
-            "filtered_rows": 38400
-        },
-        "nulls": {
-            "antiguedad_laboral": {
-                "nulos": 4534,
-                "porcentaje": 11
-            },
-            "puntuacion_buro": {
-                "nulos": 412,
-                "porcentaje": 1
-            },
-            "ingresos_anuales": {
-                "nulos": 0,
-                "porcentaje": 0
-            }
-        },
-        "target_distribution": [
+        "eda_dimensions": [
             {
-                "label": "Solvente (0)",
-                "count": 32643,
+                "total_rows_raw_est": 3368470,
+                "sample_rows": 336847,
+                "total_columns": 38,
+                "filtered_rows": 2061309
+            }
+        ],
+        "eda_nulls": [
+            {
+                "campo": "puntuacion_crediticia_min",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "puntuacion_crediticia_max",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "importe_solicitado",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "importe_financiado",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "ratio_prestamo_ingresos",
+                "nulos": 37105,
+                "porcentaje": 11.02
+            },
+            {
+                "campo": "tipo_interes",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "plazo_prestamo",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "antiguedad_laboral",
+                "nulos": 28036,
+                "porcentaje": 8.32
+            },
+            {
+                "campo": "ingresos_anuales",
+                "nulos": 9419,
+                "porcentaje": 2.8
+            },
+            {
+                "campo": "finalidad_prestamo",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "estado_prestamo",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "cuota_mensual",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "estado_verificacion_ingresos",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "fecha_emision",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "plan_pagos_activo",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "impago_ultimos_2_anios",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "fecha_primera_linea_credito",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "consultas_credito_ultimos_6_meses",
+                "nulos": 1,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "lineas_credito_abiertas",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "registros_publicos_negativos",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "saldo_credito_revolving",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "porcentaje_uso_credito_revolving",
+                "nulos": 233,
+                "porcentaje": 0.07
+            },
+            {
+                "campo": "total_lineas_credito",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "capital_pendiente",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "total_pagado",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "capital_pagado",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "intereses_pagados",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "fecha_ultimo_pago",
+                "nulos": 487,
+                "porcentaje": 0.14
+            },
+            {
+                "campo": "importe_ultimo_pago",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "fecha_proximo_pago",
+                "nulos": 163281,
+                "porcentaje": 48.47
+            },
+            {
+                "campo": "tipo_solicitud",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "cuentas_hipotecarias",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "bancarrotas_publicas",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "grado_riesgo",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "tipo_vivienda",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "puntuacion_crediticia_media",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "importe_no_financiado",
+                "nulos": 0,
+                "porcentaje": 0.0
+            },
+            {
+                "campo": "ratio_financiacion",
+                "nulos": 0,
+                "porcentaje": 0.0
+            }
+        ],
+        "eda_estado_prestamo_distribution": [
+            {
+                "label": "Pagado completamente",
+                "count": 163439,
+                "percentage": 48.52
+            },
+            {
+                "label": "Al corriente",
+                "count": 128648,
+                "percentage": 38.19
+            },
+            {
+                "label": "Incobrable",
+                "count": 40823,
+                "percentage": 12.12
+            },
+            {
+                "label": "Retraso de 31 a 120 días",
+                "count": 1949,
+                "percentage": 0.58
+            },
+            {
+                "label": "Periodo de gracia",
+                "count": 1322,
+                "percentage": 0.39
+            },
+            {
+                "label": "Retraso de 16 a 30 días",
+                "count": 354,
+                "percentage": 0.11
+            },
+            {
+                "label": "Recién emitido",
+                "count": 261,
+                "percentage": 0.08
+            },
+            {
+                "label": "Default",
+                "count": 51,
+                "percentage": 0.02
+            }
+        ],
+        "eda_target_distribution": [
+            {
+                "label": "Solvente (Clase 0)",
+                "count": 163211,
                 "percentage": 79.18
             },
             {
-                "label": "Impago (1)",
-                "count": 8583,
+                "label": "Impago/Default (Clase 1)",
+                "count": 42920,
                 "percentage": 20.82
             }
         ],
-        "descriptive_stats": {
-            "ingresos_anuales": {
-                "mean": 45000,
-                "median": 41000,
-                "std": 12000,
-                "min": 12000,
-                "max": 180000
+        "eda_descriptive_stats": [
+            {
+                "variable": "importe_solicitado",
+                "count": 206131,
+                "mean": 14967.9,
+                "std": 9476.86,
+                "min": 820.15,
+                "median": 12500.0,
+                "max": 104697.99
             },
-            "importe_solicitado": {
-                "mean": 12500,
-                "median": 10000,
-                "std": 6200,
-                "min": 1000,
-                "max": 40000
+            {
+                "variable": "ingresos_anuales",
+                "count": 204957,
+                "mean": 154361.36,
+                "std": 339891.1,
+                "min": 0.0,
+                "median": 65000.0,
+                "max": 9550000.0
+            },
+            {
+                "variable": "ratio_prestamo_ingresos",
+                "count": 185997,
+                "mean": 0.23,
+                "std": 2.77,
+                "min": 0.0,
+                "median": 0.18,
+                "max": 825.55
+            },
+            {
+                "variable": "puntuacion_crediticia_media",
+                "count": 206131,
+                "mean": 696.93,
+                "std": 33.61,
+                "min": 583.62,
+                "median": 691.5,
+                "max": 847.5
+            },
+            {
+                "variable": "bancarrotas_publicas",
+                "count": 206131,
+                "mean": 0.14,
+                "std": 0.38,
+                "min": 0.0,
+                "median": 0.0,
+                "max": 9.0
+            },
+            {
+                "variable": "consultas_credito_ultimos_6_meses",
+                "count": 206131,
+                "mean": 0.71,
+                "std": 1.05,
+                "min": 0.0,
+                "median": 0.0,
+                "max": 13.0
+            },
+            {
+                "variable": "impago_ultimos_2_anios",
+                "count": 206131,
+                "mean": 0.46,
+                "std": 1.05,
+                "min": 0.0,
+                "median": 0.0,
+                "max": 22.0
+            },
+            {
+                "variable": "tipo_interes",
+                "count": 206131,
+                "mean": 13.07,
+                "std": 4.87,
+                "min": 5.31,
+                "median": 12.62,
+                "max": 30.99
+            },
+            {
+                "variable": "porcentaje_uso_credito_revolving",
+                "count": 206011,
+                "mean": 49.55,
+                "std": 24.73,
+                "min": 0.0,
+                "median": 49.2,
+                "max": 152.5
+            },
+            {
+                "variable": "plazo_meses",
+                "count": 206131,
+                "mean": 43.04,
+                "std": 10.93,
+                "min": 36.0,
+                "median": 36.0,
+                "max": 60.0
+            },
+            {
+                "variable": "antiguedad_laboral_num",
+                "count": 206131,
+                "mean": 0.0,
+                "std": 0.0,
+                "min": 0.0,
+                "median": 0.0,
+                "max": 0.0
+            },
+            {
+                "variable": "grado_riesgo_num",
+                "count": 206131,
+                "mean": 2.82,
+                "std": 1.39,
+                "min": 1.0,
+                "median": 3.0,
+                "max": 7.0
+            },
+            {
+                "variable": "cuota_mensual_estimada",
+                "count": 206131,
+                "mean": 398.09,
+                "std": 250.96,
+                "min": 14.87,
+                "median": 329.79,
+                "max": 2605.78
+            },
+            {
+                "variable": "ratio_carga_financiera",
+                "count": 206131,
+                "mean": 455.82,
+                "std": 1704.27,
+                "min": 0.0,
+                "median": 0.06,
+                "max": 20056.66
+            },
+            {
+                "variable": "ingreso_residual_anual",
+                "count": 206131,
+                "mean": 148705.09,
+                "std": 338943.05,
+                "min": -27660.81,
+                "median": 59923.29,
+                "max": 9543526.6
+            },
+            {
+                "variable": "alerta_sobreendeudamiento",
+                "count": 206131,
+                "mean": 0.33,
+                "std": 0.56,
+                "min": 0.0,
+                "median": 0.0,
+                "max": 10.01
+            },
+            {
+                "variable": "ingresos_anuales_log",
+                "count": 206131,
+                "mean": 10.23,
+                "std": 3.49,
+                "min": 0.0,
+                "median": 11.08,
+                "max": 16.07
+            },
+            {
+                "variable": "importe_solicitado_log",
+                "count": 206131,
+                "mean": 9.39,
+                "std": 0.72,
+                "min": 6.71,
+                "median": 9.43,
+                "max": 11.56
             }
-        },
-        "correlation": {
-            "columns": [
-                "ingresos_anuales",
-                "importe_solicitado",
-                "puntuacion_buro"
-            ],
-            "matrix": [
-                [
-                    1.0,
-                    0.35,
-                    0.15
-                ],
-                [
-                    0.35,
-                    1.0,
-                    -0.05
-                ],
-                [
-                    0.15,
-                    -0.05,
-                    1.0
-                ]
-            ]
-        }
+        ],
+        "eda_categorical_distribution": [
+            {
+                "variable": "grado_riesgo",
+                "label": "C",
+                "count": 80693,
+                "percentage": 23.96
+            },
+            {
+                "variable": "grado_riesgo",
+                "label": "B",
+                "count": 77366,
+                "percentage": 22.97
+            },
+            {
+                "variable": "grado_riesgo",
+                "label": "A",
+                "count": 52098,
+                "percentage": 15.47
+            },
+            {
+                "variable": "grado_riesgo",
+                "label": "D",
+                "count": 49441,
+                "percentage": 14.68
+            },
+            {
+                "variable": "grado_riesgo",
+                "label": "E",
+                "count": 32116,
+                "percentage": 9.53
+            },
+            {
+                "variable": "grado_riesgo",
+                "label": "F",
+                "count": 23968,
+                "percentage": 7.12
+            },
+            {
+                "variable": "grado_riesgo",
+                "label": "G",
+                "count": 21165,
+                "percentage": 6.28
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Consolidación de deuda",
+                "count": 148391,
+                "percentage": 44.05
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Tarjeta de crédito",
+                "count": 62292,
+                "percentage": 18.49
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Otros",
+                "count": 27245,
+                "percentage": 8.09
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Mejora del hogar",
+                "count": 21672,
+                "percentage": 6.43
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Pequeño negocio",
+                "count": 20412,
+                "percentage": 6.06
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Gastos médicos",
+                "count": 16456,
+                "percentage": 4.89
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Compra importante",
+                "count": 10198,
+                "percentage": 3.03
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Coche",
+                "count": 7058,
+                "percentage": 2.1
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Vacaciones",
+                "count": 6203,
+                "percentage": 1.84
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Mudanza",
+                "count": 6180,
+                "percentage": 1.83
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Vivienda",
+                "count": 6125,
+                "percentage": 1.82
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Energía renovable",
+                "count": 4614,
+                "percentage": 1.37
+            },
+            {
+                "variable": "finalidad_prestamo",
+                "label": "Boda",
+                "count": 1,
+                "percentage": 0.0
+            }
+        ],
+        "eda_correlation": [
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "importe_solicitado",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.05
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.03
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 0.068
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.092
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.041
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.052
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "tipo_interes",
+                "correlation": 0.098
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.082
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "plazo_meses",
+                "correlation": 0.333
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.136
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.909
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.022
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.043
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.059
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.23
+            },
+            {
+                "variable_x": "importe_solicitado",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.915
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.05
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "ingresos_anuales",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": -0.025
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 0.028
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.008
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.001
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.015
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "tipo_interes",
+                "correlation": -0.022
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.006
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "plazo_meses",
+                "correlation": 0.006
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "grado_riesgo_num",
+                "correlation": -0.043
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.069
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.024
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.017
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.823
+            },
+            {
+                "variable_x": "ingresos_anuales",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.045
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.03
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "ingresos_anuales",
+                "correlation": -0.025
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.002
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.003
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.005
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.004
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "tipo_interes",
+                "correlation": 0.013
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": -0.005
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "plazo_meses",
+                "correlation": 0.018
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.018
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.024
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.991
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": -0.025
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.002
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": -0.088
+            },
+            {
+                "variable_x": "ratio_prestamo_ingresos",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.03
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.068
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.028
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": -0.002
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.196
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": -0.179
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": -0.237
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "tipo_interes",
+                "correlation": -0.338
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": -0.379
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "plazo_meses",
+                "correlation": -0.068
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "grado_riesgo_num",
+                "correlation": -0.38
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.075
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.001
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.027
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": -0.254
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.068
+            },
+            {
+                "variable_x": "puntuacion_crediticia_media",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.059
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "importe_solicitado",
+                "correlation": -0.092
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "ingresos_anuales",
+                "correlation": -0.008
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": -0.003
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.196
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.074
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": -0.048
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "tipo_interes",
+                "correlation": 0.05
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": -0.07
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "plazo_meses",
+                "correlation": -0.015
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.046
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": -0.088
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.003
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": -0.008
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.044
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": -0.034
+            },
+            {
+                "variable_x": "bancarrotas_publicas",
+                "variable_y": "importe_solicitado_log",
+                "correlation": -0.08
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.041
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.001
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.005
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.179
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": 0.074
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.195
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "tipo_interes",
+                "correlation": 0.153
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": -0.103
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "plazo_meses",
+                "correlation": 0.14
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.297
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": -0.003
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.001
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.001
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.827
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.004
+            },
+            {
+                "variable_x": "consultas_credito_ultimos_6_meses",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.019
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.052
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.015
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.004
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.237
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.048
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.195
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "tipo_interes",
+                "correlation": 0.048
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": -0.034
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "plazo_meses",
+                "correlation": 0.116
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.192
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.011
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.015
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.145
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.025
+            },
+            {
+                "variable_x": "impago_ultimos_2_anios",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.031
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.098
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "ingresos_anuales",
+                "correlation": -0.022
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.013
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.338
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": 0.05
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.153
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.048
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "tipo_interes",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.197
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "plazo_meses",
+                "correlation": 0.322
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.738
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.035
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.009
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": -0.022
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.19
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": -0.072
+            },
+            {
+                "variable_x": "tipo_interes",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.082
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.082
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.006
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": -0.005
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.379
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.07
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": -0.103
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": -0.034
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "tipo_interes",
+                "correlation": 0.197
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "plazo_meses",
+                "correlation": 0.03
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.149
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.09
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.005
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.005
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.218
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.043
+            },
+            {
+                "variable_x": "porcentaje_uso_credito_revolving",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.093
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.333
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.006
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.018
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.068
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.015
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.14
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.116
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "tipo_interes",
+                "correlation": 0.322
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.03
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "plazo_meses",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.413
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": -0.035
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.001
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.006
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.114
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.041
+            },
+            {
+                "variable_x": "plazo_meses",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.34
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "tipo_interes",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "plazo_meses",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "antiguedad_laboral_num",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.136
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "ingresos_anuales",
+                "correlation": -0.043
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.018
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.38
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": 0.046
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.297
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.192
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "tipo_interes",
+                "correlation": 0.738
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.149
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "plazo_meses",
+                "correlation": 0.413
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.019
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.01
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": -0.043
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.277
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": -0.101
+            },
+            {
+                "variable_x": "grado_riesgo_num",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.105
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.909
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.069
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.024
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 0.075
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.088
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": -0.003
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.011
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "tipo_interes",
+                "correlation": 0.035
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.09
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "plazo_meses",
+                "correlation": -0.035
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.019
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.025
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.06
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.028
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.243
+            },
+            {
+                "variable_x": "cuota_mensual_estimada",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.846
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.022
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "ingresos_anuales",
+                "correlation": -0.024
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.991
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.001
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.003
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.001
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "tipo_interes",
+                "correlation": 0.009
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": -0.005
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "plazo_meses",
+                "correlation": -0.001
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.01
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.025
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": -0.024
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": -0.001
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": -0.083
+            },
+            {
+                "variable_x": "ratio_carga_financiera",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.024
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.043
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "ingresos_anuales",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": -0.025
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 0.027
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.008
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.001
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.015
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "tipo_interes",
+                "correlation": -0.022
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.005
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "plazo_meses",
+                "correlation": 0.006
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "grado_riesgo_num",
+                "correlation": -0.043
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.06
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.024
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.017
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.822
+            },
+            {
+                "variable_x": "ingreso_residual_anual",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.038
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.059
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.017
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.002
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": -0.254
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": 0.044
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.827
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.145
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "tipo_interes",
+                "correlation": 0.19
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.218
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "plazo_meses",
+                "correlation": 0.114
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.277
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.028
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.001
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.017
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.034
+            },
+            {
+                "variable_x": "alerta_sobreendeudamiento",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.043
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.23
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.823
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": -0.088
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 0.068
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.034
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.004
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.025
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "tipo_interes",
+                "correlation": -0.072
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.043
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "plazo_meses",
+                "correlation": 0.041
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "grado_riesgo_num",
+                "correlation": -0.101
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.243
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": -0.083
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.822
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.034
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 1.0
+            },
+            {
+                "variable_x": "ingresos_anuales_log",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 0.22
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "importe_solicitado",
+                "correlation": 0.915
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "ingresos_anuales",
+                "correlation": 0.045
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "ratio_prestamo_ingresos",
+                "correlation": 0.03
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "puntuacion_crediticia_media",
+                "correlation": 0.059
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "bancarrotas_publicas",
+                "correlation": -0.08
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "consultas_credito_ultimos_6_meses",
+                "correlation": 0.019
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "impago_ultimos_2_anios",
+                "correlation": 0.031
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "tipo_interes",
+                "correlation": 0.082
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "porcentaje_uso_credito_revolving",
+                "correlation": 0.093
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "plazo_meses",
+                "correlation": 0.34
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "antiguedad_laboral_num",
+                "correlation": 0.0
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "grado_riesgo_num",
+                "correlation": 0.105
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "cuota_mensual_estimada",
+                "correlation": 0.846
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "ratio_carga_financiera",
+                "correlation": 0.024
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "ingreso_residual_anual",
+                "correlation": 0.038
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "alerta_sobreendeudamiento",
+                "correlation": 0.043
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "ingresos_anuales_log",
+                "correlation": 0.22
+            },
+            {
+                "variable_x": "importe_solicitado_log",
+                "variable_y": "importe_solicitado_log",
+                "correlation": 1.0
+            }
+        ]
     }
 }
