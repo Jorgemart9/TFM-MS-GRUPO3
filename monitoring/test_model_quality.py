@@ -124,7 +124,34 @@ def trigger_cloud_build(trigger_name_or_url, project_id, location):
         if response.status_code in [200, 201, 202]:
             print_result("Trigger de Cloud Build", True, f"Pipeline de reentrenamiento ({trigger_id}) disparado correctamente.")
         else:
-            print_result("Trigger de Cloud Build", False, f"Error al disparar el trigger: {response.status_code} - {response.text}")
+            logging.warning(f"[!] Falló el trigger (Código {response.status_code}). Intentando lanzar reentrenamiento directo (source-less build) en Cloud Build...")
+            build_url = f"https://cloudbuild.googleapis.com/v1/projects/{project_id}/locations/{location}/builds"
+            build_payload = {
+                "serviceAccount": f"projects/{project_id}/serviceAccounts/sa-mlops-evaluator-v2@{project_id}.iam.gserviceaccount.com",
+                "steps": [
+                    {
+                        "name": "gcr.io/google.com/cloudsdktool/cloud-sdk",
+                        "entrypoint": "gcloud",
+                        "args": [
+                            "ai",
+                            "custom-jobs",
+                            "create",
+                            f"--region={location}",
+                            "--display-name=reentreno-vertex-job",
+                            f"--worker-pool-spec=machine-type=n1-standard-4,container-image-uri={location}-docker.pkg.dev/{project_id}/training-repo/training-pipeline:latest",
+                            f"--service-account=sa-vertex-train@{project_id}.iam.gserviceaccount.com"
+                        ]
+                    }
+                ],
+                "options": {
+                    "logging": "CLOUD_LOGGING_ONLY"
+                }
+            }
+            build_response = httpx.post(build_url, headers=headers, json=build_payload, timeout=30.0)
+            if build_response.status_code in [200, 201, 202]:
+                print_result("Trigger de Cloud Build (Fallback Directo)", True, "Build de reentrenamiento lanzado correctamente (sin origen).")
+            else:
+                print_result("Trigger de Cloud Build (Fallback Directo)", False, f"Error al lanzar build de reentrenamiento directo: {build_response.status_code} - {build_response.text}")
     except Exception as e:
         print_result("Trigger de Cloud Build", False, f"Error al autenticar o conectar con Cloud Build: {e}")
 

@@ -50,7 +50,6 @@ resource "google_cloudbuild_trigger" "model_test_trigger" {
   }
 }
 
-
 resource "google_cloudbuild_trigger" "model_training_trigger" {
   project     = var.project_id
   name        = "reentrenar-modelo"
