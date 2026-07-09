@@ -1,29 +1,29 @@
-# name: CI/CD Pipeline - TFM MLOps
-# 
-# on:
-#   push:
-#     branches:
-#       - despliegue-modelos
-# 
-# env:
-#   PROJECT_ID: tfm-ms-3
-#   REGION: europe-west1
-#   WIF_PROVIDER: projects/1076362823794/locations/global/workloadIdentityPools/github-wif-pool/providers/github-provider
-#   WIF_SERVICE_ACCOUNT: sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com
-#   VERTEX_SA: sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com
-#   GCS_BUCKET: models-artifacts-tfm
-#   BQ_DATASET_DASH: gubernatura_modelos
-#   BQ_DATASET_RAW: analytics_warehouse
-# 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     permissions:
-#       contents: 'read'
-#       id-token: 'write'
-# 
-#     steps:
-#     # ==========================================
+ name: CI/CD Pipeline - TFM MLOps
+ 
+ on:
+   push:
+     branches:
+       - despliegue-modelos
+ 
+ env:
+   PROJECT_ID: tfm-ms-3
+   REGION: europe-west1
+     WIF_PROVIDER: projects/1076362823794/locations/global/workloadIdentityPools/github-wif-pool/providers/github-provider
+     WIF_SERVICE_ACCOUNT: sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com
+     VERTEX_SA: sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com
+     GCS_BUCKET: models-artifacts-tfm
+     BQ_DATASET_DASH: gubernatura_modelos
+    BQ_DATASET_RAW: analytics_warehouse# 
+ jobs:
+   deploy:
+     runs-on: ubuntu-latest
+     permissions:
+       contents: 'read'
+       id-token: 'write'
+ 
+     steps:
+
+     # ==========================================
 #     # PASO 1: CONFIGURACIÓN E INICIO DEL RUNNER
 #     # ==========================================
 #     - name: Checkout Repository
