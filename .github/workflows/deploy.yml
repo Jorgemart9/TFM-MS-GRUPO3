@@ -127,8 +127,11 @@ jobs:
             --region="${{ env.REGION }}" \
             --service-account="${{ env.VERTEX_SA }}" \
             --set-env-vars="PROJECT_ID=${{ env.PROJECT_ID }},LOCATION=${{ env.REGION }},GCS_BUCKET=${{ env.GCS_BUCKET }},BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }},BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}" \
+            --memory=8Gi \
+            --cpu=4 \
             --quiet
 
           gcloud run jobs execute export-metrics --region="${{ env.REGION }}" --wait
+
 
    
