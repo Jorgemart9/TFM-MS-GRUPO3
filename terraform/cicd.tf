@@ -62,13 +62,6 @@ resource "google_service_account_iam_member" "github_act_as_preprocess" {
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.github_deployer.email}"
 }
-
-resource "google_service_account_iam_member" "github_act_as_dash" {
-  service_account_id = google_service_account.sa_dash.id
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.github_deployer.email}"
-}
-
 resource "google_service_account_iam_member" "github_act_as_monitoring" {
   service_account_id = google_service_account.sa_monitoring.id
   role               = "roles/iam.serviceAccountUser"
@@ -86,4 +79,10 @@ resource "google_storage_bucket_iam_member" "github_storage_admin" {
   bucket = google_storage_bucket.models_bucket.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
+resource "google_service_account_iam_member" "github_act_as_dash" {
+  service_account_id = google_service_account.sa_dash.id
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.github_deployer.email}"
 }

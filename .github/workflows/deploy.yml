@@ -102,6 +102,7 @@ jobs:
           --region=${{ env.REGION }} \
           --platform=managed \
           --allow-unauthenticated \
+          --service-account="sa-dash@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
           --quiet
         echo "[OK] Dashboard actualizado correctamente."
 
