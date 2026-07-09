@@ -3,7 +3,7 @@ name: CI/CD Pipeline - TFM MLOps
 on:
   push:
     branches:
-      - despliegue-modelos
+      - main
 
 env:
   PROJECT_ID: tfm-ms-3
