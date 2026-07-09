@@ -41,131 +41,95 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
- 
-#     # ==========================================
-#     # FASE A: COMPILACIÓN Y REGISTRO DE IMÁGENES
-#     # ==========================================
-#     - name: Build and Push Preprocess Docker Image
-#       run: |
-#         docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest -f preprocess/Dockerfile preprocess/
-#         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest
-# 
-#     - name: Build and Push Training Docker Image
-#       run: |
-#         docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest -f entrenamiento/Dockerfile entrenamiento/
-#         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest
-# 
-#     - name: Build and Push Export Metrics Docker Image
-#       run: |
-#         docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest -f validacion/Dockerfile validacion/
-#         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
-#     
-#     - name: Build and Push Export monitoring Docker Image
-#       run: |
-#         docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest -f monitoring/Dockerfile monitoring/
-#         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest
-#     
-#     - name: Build and Push Export dashboard Docker Image
-#       run: |
-#         docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest -f dash/Dockerfile dash/
-#         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest
-# 
-#     # ==========================================
-#     # FASE B: CLOUD RUN UPDATES
-#     # ==========================================
-#     - name: Update Preprocess Cloud Run Job
-#       run: |
-#         echo "[*] Actualizando Cloud Run Job de Preprocesamiento..."
-#         gcloud run jobs update preprocess \
-#           --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest \
-#           --region=${{ env.REGION }} \
-#           --quiet
-# 
-#     - name: Actualizando Cloud Run Job para Monitoreo de Calidad
-#       run: |
-#         echo "[*] Desplegando Cloud Run Job para Monitoreo de Calidad..."
-#         gcloud run jobs deploy test-model-quality \
-#           --image=europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/test_model_quality:latest \
-#           --region=europe-west1 \
-#           --service-account=${{ env.VERTEX_SA }} \
-#           --quiet
-# 
-#     - name: Deploy Dashboard Cloud Run Service
-#       run: |
-#         echo "[*] Desplegando nueva versión del Dashboard..."
-#         gcloud run deploy dashboard \
-#           --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest \
-#           --region=${{ env.REGION }} \
-#           --platform=managed \
-#           --allow-unauthenticated \
-#           --service-account="sa-dash@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
-#           --quiet
-#         echo "[OK] Dashboard actualizado correctamente."
-# 
-#     # ==========================================
-#     # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
-#     # ==========================================
-#     - name: Submit and Monitor Vertex AI Training Job
-#       run: |
-#         echo "[*] Generando archivo de configuración config.yaml dinámicamente..."
-#         cat <<EOF > config.yaml
-#         workerPoolSpecs:
-#           machineSpec:
-#             machineType: n1-standard-4
-#           replicaCount: 1
-#           containerSpec:
-#             imageUri: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest
-#             args: []
-#         EOF
-#         
-#         echo "[OK] Archivo config.yaml creado con éxito."
-#         echo "[*] Enviando trabajo a Vertex AI..."
-#         
-#         JOB_URI=$(gcloud ai custom-jobs create \
-#           --region="${{ env.REGION }}" \
-#           --display-name="tfm-training-pipeline" \
-#           --config="config.yaml" \
-#           --service-account="${{ env.VERTEX_SA }}" \
-#           --format="value(name)")
-#         
-#         if [ -z "$JOB_URI" ]; then
-#           echo "[CRITICAL] No se pudo obtener el ID del Job de Vertex AI."
-#           exit 1
-#         fi
-#         
-#         echo "[*] Job URI Detectado: $JOB_URI"
-#         echo "job_id=$JOB_URI" >> $GITHUB_ENV
-#         
-#         while true; do
-#           STATUS=$(gcloud ai custom-jobs describe "$JOB_URI" --region="${{ env.REGION }}" --format="value(state)")
-#           echo "[$(date +'%H:%M:%S')] Estado del Job: $STATUS"
-#           
-#           if [ "$STATUS" = "JOB_STATE_SUCCEEDED" ]; then
-#             echo "[OK] ¡Entrenamiento completado con éxito!"
-#             break
-#           elif [ "$STATUS" = "JOB_STATE_FAILED" ] || [ "$STATUS" = "JOB_STATE_CANCELLED" ]; then
-#             echo "[ERROR] El entrenamiento falló o fue cancelado. Estado: $STATUS"
-#             exit 1
-#           fi
-#           sleep 30
-#         done
 
-# ==========================================
-# FASE D: EJECUCIÓN VÍA CLOUD RUN JOBS (MÉTRICAS Y CALIDAD)
-# ==========================================
- - name: Trigger Cloud Run Job for Exporting Metrics
-   run: |
-     echo "[*] Asegurando existencia y ejecutando Cloud Run Job para Exportar Métricas..."
-     gcloud run jobs deploy export-metrics \
-      --image="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest" \
-       --region="${{ env.REGION }}" \
-       --service-account="${{ env.VERTEX_SA }}" \
-       --set-env-vars="PROJECT_ID=${{ env.PROJECT_ID }},LOCATION=${{ env.REGION }},GCS_BUCKET=${{ env.GCS_BUCKET }},BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }},BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}" \
-       --quiet
-     
-     gcloud run jobs execute export-metrics --region="${{ env.REGION }}" --wait
+      # ==========================================
+      # FASE A: COMPILACIÓN Y REGISTRO COMENTADOS
+      # ==========================================
+      # - name: Configure Docker Auths for Artifact Registry
+      #   run: |
+      #     gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      #
+      # - name: Build and Push Preprocess Docker Image
+      #   run: |
+      #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest -f preprocess/Dockerfile preprocess/
+      #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest
+      #
+      # - name: Build and Push Training Docker Image
+      #   run: |
+      #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest -f entrenamiento/Dockerfile entrenamiento/
+      #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/training-pipeline:latest
+      #
+      # - name: Build and Push Export Metrics Docker Image
+      #   run: |
+      #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest -f validacion/Dockerfile validacion/
+      #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest
+      #
+      # - name: Build and Push Export monitoring Docker Image
+      #   run: |
+      #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest -f monitoring/Dockerfile monitoring/
+      #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest
+      #
+      # - name: Build and Push Export dashboard Docker Image
+      #   run: |
+      #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest -f dash/Dockerfile dash/
+      #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest
 
- - name: Trigger Cloud Run Job for Quality Tests
-   run: |
-     echo "[*] Ejecutando el Cloud Run Job existente de Tests de Calidad y Drift..."
-     gcloud run jobs execute test-model-quality --region="${{ env.REGION }}" --wait
+      # ==========================================
+      # FASE B: CLOUD RUN UPDATES COMENTADOS
+      # ==========================================
+      # - name: Update Preprocess Cloud Run Job
+      #   run: |
+      #     echo "[*] Actualizando Cloud Run Job de Preprocesamiento..."
+      #     gcloud run jobs update preprocess \
+      #       --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/preprocess-pipeline:latest \
+      #       --region=${{ env.REGION }} \
+      #       --quiet
+      #
+      # - name: Actualizando Cloud Run Job para Monitoreo de Calidad
+      #   run: |
+      #     echo "[*] Desplegando Cloud Run Job para Monitoreo de Calidad..."
+      #     gcloud run jobs deploy test-model-quality \
+      #       --image=europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/test_model_quality:latest \
+      #       --region=europe-west1 \
+      #       --service-account=${{ env.VERTEX_SA }} \
+      #       --quiet
+      #
+      # - name: Deploy Dashboard Cloud Run Service
+      #   run: |
+      #     echo "[*] Desplegando nueva versión del Dashboard..."
+      #     gcloud run deploy dashboard \
+      #       --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest \
+      #       --region=${{ env.REGION }} \
+      #       --platform=managed \
+      #       --allow-unauthenticated \
+      #       --service-account="sa-dash@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+      #       --quiet
+      #     echo "[OK] Dashboard actualizado correctamente."
+
+      # ==========================================
+      # FASE C: VERTEX AI COMENTADO
+      # ==========================================
+      # - name: Submit and Monitor Vertex AI Training Job
+      #   run: |
+      #     echo "[*] Generando archivo de configuración config.yaml..."
+      #     ...
+
+      # ==========================================
+      # FASE D: CLOUD RUN JOBS (ACTIVA)
+      # ==========================================
+      - name: Trigger Cloud Run Job for Exporting Metrics
+        run: |
+          echo "[*] Asegurando existencia y ejecutando Cloud Run Job para Exportar Métricas..."
+          gcloud run jobs deploy export-metrics \
+            --image="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest" \
+            --region="${{ env.REGION }}" \
+            --service-account="${{ env.VERTEX_SA }}" \
+            --set-env-vars="PROJECT_ID=${{ env.PROJECT_ID }},LOCATION=${{ env.REGION }},GCS_BUCKET=${{ env.GCS_BUCKET }},BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }},BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}" \
+            --quiet
+          
+          gcloud run jobs execute export-metrics --region="${{ env.REGION }}" --wait
+
+      - name: Trigger Cloud Run Job for Quality Tests
+        run: |
+          echo "[*] Ejecutando el Cloud Run Job existente de Tests de Calidad y Drift..."
+          gcloud run jobs execute test-model-quality --region="${{ env.REGION }}" --wait
