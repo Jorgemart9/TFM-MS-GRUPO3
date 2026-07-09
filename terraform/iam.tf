@@ -44,6 +44,13 @@ resource "google_artifact_registry_repository_iam_member" "dash_registry_reader"
   member     = "serviceAccount:${google_service_account.sa_dash.email}"
 }
 
+resource "google_cloud_run_service_iam_member" "public_invoker" {
+  service = google_cloud_run_v2_service.dash_service.name
+  location = google_cloud_run_v2_service.dash_service.location
+  role    = "roles/run.invoker"
+  member  = "allUsers"
+}
+
 # Consultar BigQuery
 resource "google_project_iam_member" "dash_bq_viewer" {
   project = var.project_id
@@ -58,7 +65,6 @@ resource "google_project_iam_member" "dash_bq_job_user" {
 }
 
 # CLOUD RUN - MONITORING
-
 # Leer imagen Docker
 resource "google_artifact_registry_repository_iam_member" "monitoring_registry_reader" {
   location   = google_artifact_registry_repository.monitoring_repo.location
@@ -67,10 +73,37 @@ resource "google_artifact_registry_repository_iam_member" "monitoring_registry_r
   member     = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
+resource "google_storage_bucket_iam_member" "monitoring_gcs_access" {
+  bucket = "models-artifacts-tfm"
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+resource "google_project_iam_member" "monitoring_storage_admin" {
+  project = "tfm-ms-3"
+  role = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+resource "google_project_iam_member" "monitoring_storage_creator" {
+  project = "tfm-ms-3"
+  role = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.sa_monitoring.email}"
+
+}
+
+
 # Leer BigQuery
 resource "google_project_iam_member" "monitoring_bq_viewer" {
   project = var.project_id
   role    = "roles/bigquery.dataViewer"
+  member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+# Ejecutar consultas SQL
+resource "google_project_iam_member" "monitoring_bq_jobuser" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
@@ -169,4 +202,16 @@ resource "google_storage_bucket_iam_member" "sa_cloudbuild_bucket_admin" {
   bucket = "models-artifacts-tfm"
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+resource "google_service_account_iam_member" "allow_gabriel_use_cloudbuild_sa" {
+  service_account_id = google_service_account.sa_cloudbuild_v2.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "user:gbalagueradell@gmail.com"
+}
+
+resource "google_service_account_iam_member" "allow_gabriel_view_cloudbuild_sa" {
+  service_account_id = google_service_account.sa_cloudbuild_v2.name
+  role               = "roles/iam.serviceAccountViewer"
+  member             = "user:gbalagueradell@gmail.com"
 }

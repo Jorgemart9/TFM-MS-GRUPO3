@@ -71,13 +71,12 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
 resource "google_cloud_run_v2_service" "dash_service" {
   name     = "dash"
   location = var.region
-
+  
   template {
     service_account = google_service_account.sa_dash.email
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.dash_repo.name}/dash-app:latest"
-      
-      # ---> AÑADE ESTE BLOQUE <---
+
       ports {
         container_port = 8080
       }
@@ -85,19 +84,47 @@ resource "google_cloud_run_v2_service" "dash_service" {
   }
 }
 
+
 # SERVICIO MONITOREO
-resource "google_cloud_run_v2_service" "monitoring_service" {
+# SERVICIO MONITOREO
+resource "google_cloud_run_v2_job" "monitoring_job" {
   name     = "monitoring"
   location = var.region
 
   template {
-    service_account = google_service_account.sa_monitoring.email
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.monitoring_repo.name}/monitoring-app:latest"
-      
-      # ---> AÑADE ESTE BLOQUE <---
-      ports {
-        container_port = 8080
+    template {
+      service_account = google_service_account.sa_monitoring.email
+
+      containers {
+        image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.monitoring_repo.name}/monitoring-app:latest"
+
+        # 1. FORZAMOS EL COMANDO BASE (Ignora el ENTRYPOINT del Dockerfile si estaba corrupto)
+        command = ["python"]
+        
+        # 2. PASAMOS EL SCRIPT COMO PRIMER ARGUMENTO, SEGUIDO DE SUS FLAGS
+        args = [
+          "test_model_quality.py",
+          "--gcp-project", var.project_id,
+          "--gcp-location", var.region,
+          "--gcs-bucket", "models-artifacts-tfm",
+          "--cloud-build-trigger-url", "https://cloudbuild.googleapis.com/v1/projects/${var.project_id}/locations/${var.region}/triggers/evaluar-y-exportar-metricas-modelo:run"
+        ]
+
+        # Mantienes tus variables de entorno actuales
+        env {
+          name  = "GCP_PROJECT"
+          value = var.project_id
+        }
+
+        env {
+          name  = "BQ_DATASET"
+          value = "gubernatura_modelos"
+        }
+
+        env {
+          name  = "GCS_BUCKET"
+          value = "models-artifacts-tfm"
+        }
       }
     }
   }

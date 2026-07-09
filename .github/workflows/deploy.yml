@@ -12,7 +12,6 @@ env:
   WIF_SERVICE_ACCOUNT: sa-github-deployer-v2@tfm-ms-3.iam.gserviceaccount.com
   VERTEX_SA: sa-vertex-train@tfm-ms-3.iam.gserviceaccount.com
   GCS_BUCKET: models-artifacts-tfm
-  # Variables adicionales añadidas del trigger:
   BQ_DATASET_DASH: gubernatura_modelos
   BQ_DATASET_RAW: analytics_warehouse
 
@@ -76,7 +75,7 @@ jobs:
         docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest
 
     # ==========================================
-    # FASE B: CLOUD RUN 
+    # FASE B: CLOUD RUN UPDATES
     # ==========================================
     - name: Update Preprocess Cloud Run Job
       run: |
@@ -94,34 +93,24 @@ jobs:
           --region=${{ env.REGION }} \
           --quiet
 
-    - name: Update DASHBOARD
-      run: |
-        echo "[*] Actualizando Cloud Run Job para DASBHOARD
-        gcloud run jobs update test_model_quality \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest \
-          --region=${{ env.REGION }} \
-          --quiet
-    
-    - name: Deploy Dashboard Cloud Run
+    - name: Deploy Dashboard Cloud Run Service
       run: |
         echo "[*] Desplegando nueva versión del Dashboard..."
         gcloud run deploy dashboard \
           --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest \
           --region=${{ env.REGION }} \
           --platform=managed \
+          --allow-unauthenticated \
           --quiet
-
         echo "[OK] Dashboard actualizado correctamente."
 
     # ==========================================
-    # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI (CON BÚSQUEDA DINÁMICA DE CONFIG)
+    # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
     # ==========================================
     - name: Submit and Monitor Vertex AI Training Job
-      if: ${{ false }}
+      if: ${{ false }} # Cambiar a true si queréis activarlo en producción
       run: |
         echo "[*] Generando archivo de configuración config.yaml dinámicamente..."
-        
-        # Creamos la especificación del Custom Job para Vertex AI de manera dinámica
         cat <<EOF > config.yaml
         workerPoolSpecs:
           machineSpec:
@@ -135,7 +124,6 @@ jobs:
         echo "[OK] Archivo config.yaml creado con éxito."
         echo "[*] Enviando trabajo a Vertex AI..."
         
-        # Lanzamos el job utilizando la ruta del archivo generado
         JOB_URI=$(gcloud ai custom-jobs create \
           --region="${{ env.REGION }}" \
           --display-name="tfm-training-pipeline" \
@@ -151,8 +139,6 @@ jobs:
         echo "[*] Job URI Detectado: $JOB_URI"
         echo "job_id=$JOB_URI" >> $GITHUB_ENV
         
-        # Bucle de monitorización asíncrono y seguro
-        echo "[*] Esperando a que el entrenamiento en Vertex AI finalice..."
         while true; do
           STATUS=$(gcloud ai custom-jobs describe "$JOB_URI" --region="${{ env.REGION }}" --format="value(state)")
           echo "[$(date +'%H:%M:%S')] Estado del Job: $STATUS"
@@ -168,17 +154,17 @@ jobs:
         done
 
     # ==========================================
-    # FASE D: trigger 
+    # FASE D: EJECUCIÓN DIRECTA EN CLOUD BUILD (MÉTRICAS Y CALIDAD)
     # ==========================================
     - name: Trigger Cloud Build for Exporting Metrics
       run: |
-        echo "[*] Generando archivo temporal cloudbuild-export.yaml para la ejecución de métricas..."
+        echo "[*] Generando archivo temporal cloudbuild-export.yaml para evaluar-y-exportar-metricas-modelo..."
         
         cat > cloudbuild-export.yaml <<EOF
         steps:
-          - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-app:latest"
+          - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/training-repo/export-metrics:latest"
             entrypoint: "python"
-            args: ["main.py"] # Ajusta el script de entrada si es diferente
+            args: ["export_metrics.py"]
             env:
               - 'PROJECT_ID=${{ env.PROJECT_ID }}'
               - 'LOCATION=${{ env.REGION }}'
@@ -188,21 +174,22 @@ jobs:
               - 'GCS_BUCKET=${{ env.GCS_BUCKET }}'
               - 'BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }}'
               - 'BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}'
+        options:
+          logging: CLOUD_LOGGING_ONLY
         EOF
 
-        echo "[*] Lanzando Cloud Build directo para Exportación..."
-        gcloud builds submit --config=cloudbuild-export.yaml --project=${{ env.PROJECT_ID }}
+        echo "[*] Lanzando Cloud Build directo (Exportar Métricas) sin fuentes externas..."
+        gcloud builds submit --config=cloudbuild-export.yaml --project=${{ env.PROJECT_ID }} --no-source
 
-    # 2. Segundo Trigger: Pruebas de Calidad (Estructura clonada del primero)
     - name: Trigger Cloud Build for Quality Tests
       run: |
-        echo "[*] Generando archivo temporal cloudbuild-test.yaml para lanzar pruebas de calidad..."
+        echo "[*] Generando archivo temporal cloudbuild-test.yaml para ejecutar-test-calidad-y-drift..."
         
         cat > cloudbuild-test.yaml <<EOF
         steps:
-          - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/monitoring-app:latest"
+          - name: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest"
             entrypoint: "python"
-            args: ["-m", "pytest", "tests/"]
+            args: ["test_model_quality.py"]
             env:
               - 'PROJECT_ID=${{ env.PROJECT_ID }}'
               - 'LOCATION=${{ env.REGION }}'
@@ -212,7 +199,9 @@ jobs:
               - 'GCS_BUCKET=${{ env.GCS_BUCKET }}'
               - 'BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }}'
               - 'BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}'
+        options:
+          logging: CLOUD_LOGGING_ONLY
         EOF
 
-        echo "[*] Lanzando Cloud Build directo para Tests de Calidad..."
-        gcloud builds submit --config=cloudbuild-test.yaml --project=${{ env.PROJECT_ID }}
+        echo "[*] Lanzando Cloud Build directo (Tests de Calidad y Drift) sin fuentes externas..."
+        gcloud builds submit --config=cloudbuild-test.yaml --project=${{ env.PROJECT_ID }} --no-source

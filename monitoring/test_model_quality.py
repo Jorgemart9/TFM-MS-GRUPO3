@@ -4,23 +4,70 @@ import json
 import os
 import sys
 import argparse
+import httpx
 from google.cloud import storage
+import logging
+
+def setup_logger():
+    """Configura logger para imprimir resultados en formato BQQ."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler()
+        ]
+    )
 
 def print_result(test_name, success, message=""):
     color = "\033[92m[OK]\033[0m" if success else "\033[91m[FAIL]\033[0m"
-    print(f"{color} {test_name}: {message}")
+    log_message = f"{color} {test_name}: {message}"
+    logging.info(log_message)
 
 def save_results_to_gcs(bucket_name, result_data):
-    # Inicializar el cliente de Cloud Storage
+    """Guarda los resultados en Google Cloud Storage."""
     client = storage.Client()
-    bucket = client.get_bucket(bucket_name)
+    
+    # CAMBIO AQUÍ: Usamos client.bucket() en lugar de client.get_bucket()
+    # Esto evita el error 403 al no requerir permisos de lectura sobre el bucket completo
+    bucket = client.bucket(bucket_name)
     
     # Crear un archivo JSON con los resultados
     blob = bucket.blob('quality_test_results.json')
     blob.upload_from_string(json.dumps(result_data), content_type='application/json')
     print_result("Guardar Resultados", True, f"Resultados guardados en gs://{bucket_name}/quality_test_results.json.")
 
+def trigger_dashboard(results, gcp_project, gcs_bucket):
+    """Envía los resultados al dashboard."""
+    DASHBOARD_URL = "https://dash-1076362823794.europe-west1.run.app"
+    payload = {
+        "results": results,
+        "gcp_project": gcp_project,
+        "gcs_bucket": gcs_bucket
+    }
+
+    try:
+        options = httpx.Client(verify=False) # Añadido por si el entorno requiere ignorar SSL temporalmente
+        response = httpx.post(DASHBOARD_URL, json=payload)
+        if response.status_code == 200:
+            print_result("Conexión al Dashboard", True, "Resultados enviados correctamente al dashboard.")
+        else:
+            print_result("Conexión al Dashboard", False, f"Error al enviar resultados: {response.status_code} - {response.text}")
+    except Exception as e:
+        print_result("Conexión al Dashboard", False, f"Error al conectar: {e}")
+
+def trigger_cloud_build(trigger_url):
+    """Dispara el trigger de Cloud Build."""
+    try:
+        response = httpx.post(trigger_url)
+        if response.status_code == 201 or response.status_code == 200:
+            print_result("Trigger de Cloud Build", True, "Pipeline de reentrenamiento disparado correctamente.")
+        else:
+            print_result("Trigger de Cloud Build", False, f"Error al disparar el trigger: {response.status_code} - {response.text}")
+    except Exception as e:
+        print_result("Trigger de Cloud Build", False, f"Error al conectar: {e}")
+
 def run_quality_tests():
+    setup_logger()  # Configurar el logger
     print("=" * 60)
     print(" INICIANDO PRUEBAS AUTOMÁTICAS DE CALIDAD DEL MODELO Y DATOS ")
     print("=" * 60)
@@ -29,8 +76,8 @@ def run_quality_tests():
     parser = argparse.ArgumentParser(description="Validador de calidad para Vertex AI / Local")
     parser.add_argument("--gcp-project", type=str, default=None, help="ID del Proyecto de Google Cloud")
     parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP (por ejemplo, europe-west1)")
-    parser.add_argument("--experiment-name", type=str, default="credit-risk-mvp", help="Nombre del experimento en Vertex AI")
     parser.add_argument("--gcs-bucket", type=str, required=True, help="Nombre del bucket de GCS para guardar los resultados")
+    parser.add_argument("--cloud-build-trigger-url", type=str, required=True, help="URL del trigger de Cloud Build para reentrenar el modelo")
     args, unknown = parser.parse_known_args()
 
     results = {}
@@ -61,10 +108,10 @@ def run_quality_tests():
             else:
                 print_result("Test 1: Esquema de Datos", True, f"Dataset válido ({os.path.basename(data_path)}). {len(df_sample.columns)} columnas verificadas.")
                 results["Test 1"] = "Pass: Dataset válido."
-        except Exception as e:
-            print_result("Test 1: Esquema de Datos", False, f"Error leyendo dataset: {e}")
-            results["Test 1"] = f"Fail: Error leyendo dataset: {e}"
-            all_success = False
+            except Exception as e:
+                print_result("Test 1: Esquema de Datos", False, f"Error leyendo dataset: {e}")
+                results["Test 1"] = f"Fail: Error leyendo dataset: {e}"
+                all_success = False
 
     # -------------------------------------------------------------
     # TEST 2: Verificar calidad de métricas del modelo (F1, AUC, Recall)
@@ -111,6 +158,7 @@ def run_quality_tests():
     # -------------------------------------------------------------
     # TEST 3: Verificar límites de Data Drift (PSI < 0.25)
     # -------------------------------------------------------------
+    drift_detected = False
     if os.path.exists(metrics_path):
         try:
             psi_values = metrics["data_drift"]["psi"]
@@ -120,6 +168,7 @@ def run_quality_tests():
             for feat, psi in zip(features, psi_values):
                 if psi >= 0.25:
                     drift_critical.append(f"{feat} (PSI={psi})")
+                    drift_detected = True
             
             if not drift_critical:
                 max_psi = max(psi_values) if psi_values else 0
@@ -129,6 +178,7 @@ def run_quality_tests():
                 print_result("Test 3: Límites de Data Drift", False, f"Drift crítico detectado en: {', '.join(drift_critical)}")
                 results["Test 3"] = f"Fail: Drift crítico detectado en: {', '.join(drift_critical)}"
                 all_success = False
+                drift_detected = True
         except Exception as e:
             print_result("Test 3: Límites de Data Drift", False, f"Error validando PSI: {e}")
             results["Test 3"] = f"Fail: Error validando PSI: {e}"
@@ -257,6 +307,13 @@ def run_quality_tests():
 
     # Guardar resultados finales en GCS
     save_results_to_gcs(args.gcs_bucket, results)
+
+    # Enviar resultados al dashboard
+    trigger_dashboard(results, args.gcp_project, args.gcs_bucket)
+
+    # Disparar el trigger de Cloud Build solo si se encontró drift
+    if drift_detected:
+        trigger_cloud_build(args.cloud_build_trigger_url)
 
     print("=" * 60)
     if all_success:
