@@ -379,7 +379,8 @@ def run_quality_tests():
         aiplatform.init(project=args.gcp_project, location=args.gcp_location)
         models = aiplatform.Model.list()
 
-        expected_display_name = "Champion_XGBoost_MVP_Balanced"
+        champion_model_name = metrics.get("champion", {}).get("model_name", "XGBoost") if metrics else "XGBoost"
+        expected_display_name = f"Champion_{champion_model_name}_MVP_Balanced"
         matching_models = [m for m in models if m.display_name == expected_display_name]
 
         if matching_models:
