@@ -51,10 +51,10 @@ resource "google_cloud_run_service_iam_member" "public_invoker" {
   member  = "allUsers"
 }
 
-# Consultar BigQuery
-resource "google_project_iam_member" "dash_bq_viewer" {
+# Consultar y actualizar BigQuery (para escribir logs en t_quality_test_log)
+resource "google_project_iam_member" "dash_bq_editor" {
   project = var.project_id
-  role    = "roles/bigquery.dataViewer"
+  role    = "roles/bigquery.dataEditor"
   member  = "serviceAccount:${google_service_account.sa_dash.email}"
 }
 
