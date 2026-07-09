@@ -102,14 +102,12 @@ jobs:
           --platform=managed \
           --allow-unauthenticated \
           --quiet
-
-    echo "[OK] Dashboard actualizado correctamente."
+        echo "[OK] Dashboard actualizado correctamente."
 
     # ==========================================
     # FASE C: ENTRENAMIENTO AUTOMÁTICO EN VERTEX AI
     # ==========================================
     - name: Submit and Monitor Vertex AI Training Job
-      if: ${{ false }} # Cambiar a true si queréis activarlo en producción
       run: |
         echo "[*] Generando archivo de configuración config.yaml dinámicamente..."
         cat <<EOF > config.yaml
