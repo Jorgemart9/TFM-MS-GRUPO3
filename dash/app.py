@@ -398,7 +398,28 @@ async def get_dashboard_metrics():
         return JSONResponse(content=final_payload)
         
     except Exception as e:
-        print(f"[!] Fallo crítico en backend: {e}")
+   @app.post("/quality-results")
+async def receive_quality_results(request: Request):
+    try:
+        payload = await request.json()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"JSON inválido: {e}")
+
+    try:
+        rows = [{
+            "gcp_project": payload.get("gcp_project"),
+            "gcs_bucket": payload.get("gcs_bucket"),
+            "results": json.dumps(payload.get("results", {}), ensure_ascii=False),
+        }]
+        table_id = f"{DATASET_REF}.t_quality_test_log"
+        errors = bq_client.insert_rows_json(table_id, rows)
+        if errors:
+            raise HTTPException(status_code=500, detail=f"Error insertando en BigQuery: {errors}")
+        return JSONResponse(content={"status": "ok"})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

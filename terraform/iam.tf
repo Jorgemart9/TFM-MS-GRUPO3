@@ -215,4 +215,9 @@ resource "google_storage_bucket_iam_member" "sa_cloudbuild_bucket_admin" {
   member = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
 }
 
+resource "google_service_account_iam_member" "monitoring_act_as_cloudbuild_evaluator" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/sa-cloudbuild-evaluator@${var.project_id}.iam.gserviceaccount.com"
+  role                = "roles/iam.serviceAccountUser"
+  member              = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
 
