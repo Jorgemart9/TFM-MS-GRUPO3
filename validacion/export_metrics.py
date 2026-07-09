@@ -298,6 +298,15 @@ try:
           orden INT64 NOT NULL,
           fecha_calculo TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
         );
+        """,
+        # Registro de Tests de Calidad (para /quality-results del dashboard)
+        f"""
+        CREATE TABLE IF NOT EXISTS `{dataset_ref}.t_quality_test_log` (
+          gcp_project STRING,
+          gcs_bucket STRING,
+          results STRING,
+          fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+        );
         """
     ]
     

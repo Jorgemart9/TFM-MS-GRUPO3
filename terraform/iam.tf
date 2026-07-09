@@ -28,6 +28,12 @@ resource "google_project_iam_member" "preprocess_bq_editor" {
   member  = "serviceAccount:${google_service_account.sa_preprocess.email}"
 }
 
+#Escribe los resultados
+resource "google_storage_bucket_iam_member" "preprocess_bucket_writer" {
+  bucket = google_storage_bucket.models_bucket.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:sa-preprocess@tfm-ms-3.iam.gserviceaccount.com"
+}
 # CLOUD RUN - DASHBOARD
 
 # Leer imagen Docker
@@ -36,6 +42,13 @@ resource "google_artifact_registry_repository_iam_member" "dash_registry_reader"
   repository = google_artifact_registry_repository.dash_repo.name
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:${google_service_account.sa_dash.email}"
+}
+
+resource "google_cloud_run_service_iam_member" "public_invoker" {
+  service = google_cloud_run_v2_service.dash_service.name
+  location = google_cloud_run_v2_service.dash_service.location
+  role    = "roles/run.invoker"
+  member  = "allUsers"
 }
 
 # Consultar BigQuery
@@ -52,7 +65,6 @@ resource "google_project_iam_member" "dash_bq_job_user" {
 }
 
 # CLOUD RUN - MONITORING
-
 # Leer imagen Docker
 resource "google_artifact_registry_repository_iam_member" "monitoring_registry_reader" {
   location   = google_artifact_registry_repository.monitoring_repo.location
@@ -61,10 +73,48 @@ resource "google_artifact_registry_repository_iam_member" "monitoring_registry_r
   member     = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
+resource "google_storage_bucket_iam_member" "monitoring_gcs_access" {
+  bucket = "models-artifacts-tfm"
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+resource "google_project_iam_member" "monitoring_storage_admin" {
+  project = "tfm-ms-3"
+  role = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+resource "google_project_iam_member" "monitoring_storage_creator" {
+  project = "tfm-ms-3"
+  role = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.sa_monitoring.email}"
+
+}
+
+resource "google_project_iam_member" "monitoring_cloudbuild_editor" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.editor"
+  member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+resource "google_project_iam_member" "monitoring_aiplatform_viewer" {
+  project = var.project_id
+  role    = "roles/aiplatform.viewer"
+  member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
 # Leer BigQuery
 resource "google_project_iam_member" "monitoring_bq_viewer" {
   project = var.project_id
   role    = "roles/bigquery.dataViewer"
+  member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+# Ejecutar consultas SQL
+resource "google_project_iam_member" "monitoring_bq_jobuser" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
@@ -105,16 +155,13 @@ resource "google_storage_bucket_iam_member" "vertex_storage_admin" {
   member = "serviceAccount:${google_service_account.sa_vertex.email}"
 }
 
+# CLOUD BUILD 
 
-#CLOUD BUILD 
-
-# Permiso para que Cloud Build pueda subir (push) imágenes a "training-repo"
-resource "google_artifact_registry_repository_iam_member" "cb_writer" {
-  project    = var.project_id
-  location   = google_artifact_registry_repository.training_repo.location
-  repository = google_artifact_registry_repository.training_repo.name
-  role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+# Permiso para que Cloud Build pueda subir (push) imágenes a todos los repositorios
+resource "google_project_iam_member" "cb_artifact_registry" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
 }
 
 # Permisos en BigQuery: Escribir métricas/drift (gubernatura_modelos) y leer datos de entrenamiento (analytics_warehouse)
@@ -151,10 +198,6 @@ resource "google_project_iam_member" "cb_gcs_admin" {
   member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
 }
 
-# ==============================================================================
-# 3. PERMISOS IAM ADICIONALES PARA LA CUENTA DE ENTRENAMIENTO DE VERTEX AI
-# ==============================================================================
-
 # Permiso para que la cuenta de Vertex AI pueda descargar (pull) imágenes de "training-repo"
 resource "google_artifact_registry_repository_iam_member" "vertex_reader" {
   project    = var.project_id
@@ -163,3 +206,22 @@ resource "google_artifact_registry_repository_iam_member" "vertex_reader" {
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
 }
+
+resource "google_storage_bucket_iam_member" "sa_cloudbuild_bucket_admin" {
+  bucket = "models-artifacts-tfm"
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+}
+
+resource "google_service_account_iam_member" "monitoring_act_as_cloudbuild_evaluator" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/sa-cloudbuild-evaluator@${var.project_id}.iam.gserviceaccount.com"
+  role                = "roles/iam.serviceAccountUser"
+  member              = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+resource "google_service_account_iam_member" "monitoring_act_as_cloudbuild_v2" {
+  service_account_id = google_service_account.sa_cloudbuild_v2.id
+  role                = "roles/iam.serviceAccountUser"
+  member              = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+

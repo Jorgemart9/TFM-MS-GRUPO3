@@ -9,7 +9,6 @@ variable "region" {
   description = "Región por defecto para los recursos"
 }
 
-
 variable "github_repository" {
   type        = string
   default     = "Jorgemart9/TFM-MS-GRUPO3"

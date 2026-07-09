@@ -4,17 +4,15 @@ resource "google_cloudbuild_trigger" "model_evaluation_trigger" {
   project     = var.project_id
   location    = "europe-west1"
 
-  # Vinculamos la cuenta de servicio con permisos que creamos antes
   service_account = google_service_account.sa_cloudbuild.id
 
-  # CAMBIADO: Configuración para ejecución manual/remota (Ideal para lanzar desde GitHub Actions)
   source_to_build {
-    uri       = "https://github.com/tu-usuario-o-organizacion/TFM-MS-GRUPO3" # Reemplaza con la URL real de tu repo
+    uri       = "https://github.com/Jorgemart9/TFM-MS-GRUPO3" # Reemplaza con la URL real de tu repo
     ref       = "refs/heads/main"
     repo_type = "GITHUB"
   }
 
-  filename = "cloudbuild.yaml"
+  filename = "validacion/cloudbuild.yml"
 
   substitutions = {
     _PROJECT_ID      = var.project_id
@@ -30,22 +28,18 @@ resource "google_cloudbuild_trigger" "model_test_trigger" {
   description = "Trigger para analizar calidad, calcular PSI/EDA, persistir en BQ y disparar reentrenamiento en Vertex AI usando training-repo"
   location    = "europe-west1"
 
-  # Vinculamos el trigger a la nueva cuenta de servicio
   service_account = google_service_account.sa_cloudbuild_v2.id
 
-  # Aseguramos que el registro de artefactos "training_repo" exista antes de configurar el trigger
   depends_on = [google_artifact_registry_repository.training_repo]
 
-  # Configuración del repositorio origen (GitHub)
   source_to_build {
-    uri       = "https://github.com/tu-usuario-o-organizacion/TFM-MS-GRUPO3"
+    uri       = "https://github.com/Jorgemart9/TFM-MS-GRUPO3"
     ref       = "refs/heads/main"
     repo_type = "GITHUB"
   }
 
   filename = "cloudbuild-test.yaml"
 
-  # Variables de entorno inyectadas dinámicamente al pipeline de Cloud Build
   substitutions = {
     _PROJECT_ID        = var.project_id
     _LOCATION          = "europe-west1"
@@ -53,5 +47,30 @@ resource "google_cloudbuild_trigger" "model_test_trigger" {
     _BQ_DATASET_RAW    = "analytics_warehouse"
     _GCS_BUCKET        = "models-artifacts-tfm"
     _SA_VERTEX_TRAIN   = "sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
+  }
+}
+
+
+resource "google_cloudbuild_trigger" "model_training_trigger" {
+  project     = var.project_id
+  name        = "reentrenar-modelo"
+  description = "Trigger para lanzar el reentrenamiento de modelos en Vertex AI"
+  location    = "europe-west1"
+
+  service_account = google_service_account.sa_cloudbuild_v2.id
+
+  source_to_build {
+    uri       = "https://github.com/Jorgemart9/TFM-MS-GRUPO3"
+    ref       = "refs/heads/main"
+    repo_type = "GITHUB"
+  }
+
+  filename = "cloudbuild-train.yaml"
+
+  substitutions = {
+    _PROJECT_ID      = var.project_id
+    _LOCATION        = "europe-west1"
+    _GCS_BUCKET      = "models-artifacts-tfm"
+    _SA_VERTEX_TRAIN = "sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
   }
 }

@@ -1,0 +1,226 @@
+{
+    "champion": {
+        "model_name": "XGBoost",
+        "metrics": {
+            "accuracy": 63.13,
+            "precision": 31.36,
+            "recall": 64.6,
+            "f1_score": 42.22,
+            "roc_auc": 69.21
+        }
+    },
+    "comparison": [
+        {
+            "name": "XGBoost",
+            "f1": 0.422,
+            "roc_auc": 0.692,
+            "accuracy": 0.631,
+            "recall": 0.646
+        },
+        {
+            "name": "LightGBM",
+            "f1": 0.42,
+            "roc_auc": 0.69,
+            "accuracy": 0.627,
+            "recall": 0.648
+        },
+        {
+            "name": "CatBoost",
+            "f1": 0.42,
+            "roc_auc": 0.689,
+            "accuracy": 0.628,
+            "recall": 0.646
+        }
+    ],
+    "evolution": {
+        "labels": [
+            "Día -25",
+            "Día -20",
+            "Día -15",
+            "Día -10",
+            "Día -5",
+            "Día -1",
+            "Hoy"
+        ],
+        "roc_auc": [
+            0.707,
+            0.704,
+            0.702,
+            0.699,
+            0.697,
+            0.694,
+            0.692
+        ],
+        "f1_score": [
+            0.442,
+            0.44,
+            0.437,
+            0.434,
+            0.43,
+            0.426,
+            0.422
+        ]
+    },
+    "data_drift": {
+        "labels": [
+            "importe_solicitado",
+            "puntuacion_buro",
+            "antiguedad_laboral",
+            "ratio_deuda_ingresos",
+            "ingresos_anuales"
+        ],
+        "psi": [
+            0.27,
+            0.12,
+            0.08,
+            0.05,
+            0.04
+        ]
+    },
+    "business": {
+        "total_risk": 2500000,
+        "avoided_loss": 1615002.035949043,
+        "pipeline_latency": 54,
+        "pipeline_error_rate": 0.02
+    },
+    "shap": {
+        "global": [
+            {
+                "feature": "puntuacion_buro",
+                "importance": 0.284
+            },
+            {
+                "feature": "ingresos_anuales",
+                "importance": 0.195
+            },
+            {
+                "feature": "ratio_deuda_ingresos",
+                "importance": 0.142
+            },
+            {
+                "feature": "antiguedad_laboral",
+                "importance": 0.091
+            },
+            {
+                "feature": "importe_solicitado",
+                "importance": 0.076
+            }
+        ],
+        "local": {
+            "low_risk": {
+                "probability": 4.2,
+                "factors": [
+                    {
+                        "feature": "puntuacion_buro",
+                        "value": "780 (Excelente)",
+                        "shap": -0.152
+                    },
+                    {
+                        "feature": "ingresos_anuales",
+                        "value": "€65.000",
+                        "shap": -0.084
+                    },
+                    {
+                        "feature": "ratio_deuda_ingresos",
+                        "value": "12%",
+                        "shap": -0.061
+                    }
+                ]
+            },
+            "high_risk": {
+                "probability": 72.8,
+                "factors": [
+                    {
+                        "feature": "puntuacion_buro",
+                        "value": "450 (Deficiente)",
+                        "shap": 0.231
+                    },
+                    {
+                        "feature": "ratio_deuda_ingresos",
+                        "value": "62%",
+                        "shap": 0.154
+                    },
+                    {
+                        "feature": "importe_solicitado",
+                        "value": "€35.000",
+                        "shap": 0.112
+                    }
+                ]
+            }
+        }
+    },
+    "eda": {
+        "dimensions": {
+            "total_rows_raw_est": 412260,
+            "sample_rows": 41226,
+            "total_columns": 11,
+            "filtered_rows": 38400
+        },
+        "nulls": {
+            "antiguedad_laboral": {
+                "nulos": 4534,
+                "porcentaje": 11
+            },
+            "puntuacion_buro": {
+                "nulos": 412,
+                "porcentaje": 1
+            },
+            "ingresos_anuales": {
+                "nulos": 0,
+                "porcentaje": 0
+            }
+        },
+        "target_distribution": [
+            {
+                "label": "Solvente (0)",
+                "count": 32643,
+                "percentage": 79.18
+            },
+            {
+                "label": "Impago (1)",
+                "count": 8583,
+                "percentage": 20.82
+            }
+        ],
+        "descriptive_stats": {
+            "ingresos_anuales": {
+                "mean": 45000,
+                "median": 41000,
+                "std": 12000,
+                "min": 12000,
+                "max": 180000
+            },
+            "importe_solicitado": {
+                "mean": 12500,
+                "median": 10000,
+                "std": 6200,
+                "min": 1000,
+                "max": 40000
+            }
+        },
+        "correlation": {
+            "columns": [
+                "ingresos_anuales",
+                "importe_solicitado",
+                "puntuacion_buro"
+            ],
+            "matrix": [
+                [
+                    1.0,
+                    0.35,
+                    0.15
+                ],
+                [
+                    0.35,
+                    1.0,
+                    -0.05
+                ],
+                [
+                    0.15,
+                    -0.05,
+                    1.0
+                ]
+            ]
+        }
+    }
+}

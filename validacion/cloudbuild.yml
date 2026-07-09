@@ -1,0 +1,11 @@
+steps:
+  - name: "europe-west1-docker.pkg.dev/tfm-ms-3/training-repo/export-metrics:latest"
+    env:
+      - "PROJECT_ID=tfm-ms-3"
+      - "LOCATION=europe-west1"
+      - "GCS_BUCKET=models-artifacts-tfm"
+      - "BQ_DATASET_DASH=gubernatura_modelos"
+      - "BQ_DATASET_RAW=analytics_warehouse"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

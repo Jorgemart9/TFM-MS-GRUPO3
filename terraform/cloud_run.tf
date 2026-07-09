@@ -11,11 +11,10 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
         # Ajustado a 'preprocess-pipeline' según tu docker push real
         image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.preprocess_repo.name}/preprocess-pipeline:latest"
         
-        # ---> AQUÍ AÑADIMOS LOS NUEVOS RECURSOS DE MEMORIA Y CPU <---
         resources {
           limits = {
-            memory = "8Gi" # 4 Gigabytes de memoria RAM
-            cpu    = "2"   # 2 CPUs virtuales para agilizar los cálculos
+            memory = "32 Gi"
+            cpu    = "8"
           }
         }
 
@@ -32,24 +31,8 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
           value = var.region
         }
         env {
-          name  = "INPUT_BUCKET"
-          value = "raw-data-tfm" 
-        }
-        env {
-          name  = "OUTPUT_BUCKET"
-          value = "clean-data-tfm" 
-        }
-        env {
           name  = "INPUT_PATH"
           value = "gs://raw-data-tfm/df_completo_cr.csv"
-        }
-        env {
-          name  = "OUTPUT_CLEAN_PATH"
-          value = "gs://clean-data-tfm/df_completo_cr_clean.csv"
-        }
-        env {
-          name  = "OUTPUT_EDA_PATH"
-          value = "gs://clean-data-tfm/eda_results.json"
         }
         env {
           name  = "PROJECT_ID"
@@ -72,13 +55,12 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
 resource "google_cloud_run_v2_service" "dash_service" {
   name     = "dash"
   location = var.region
-
+  
   template {
     service_account = google_service_account.sa_dash.email
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.dash_repo.name}/dash-app:latest"
-      
-      # ---> AÑADE ESTE BLOQUE <---
+
       ports {
         container_port = 8080
       }
@@ -86,19 +68,56 @@ resource "google_cloud_run_v2_service" "dash_service" {
   }
 }
 
+
 # SERVICIO MONITOREO
-resource "google_cloud_run_v2_service" "monitoring_service" {
+resource "google_cloud_run_v2_job" "monitoring_job" {
   name     = "monitoring"
   location = var.region
 
   template {
-    service_account = google_service_account.sa_monitoring.email
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.monitoring_repo.name}/monitoring-app:latest"
-      
-      # ---> AÑADE ESTE BLOQUE <---
-      ports {
-        container_port = 8080
+    template {
+      service_account = google_service_account.sa_monitoring.email
+
+      containers {
+        image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.monitoring_repo.name}/test_model_quality:latest"
+
+        # 1. FORZAMOS EL COMANDO BASE
+        command = ["python"]
+        
+        # 2. PASAMOS EL SCRIPT COMO PRIMER ARGUMENTO
+        args = [
+          "test_model_quality.py",
+          "--gcp-project", var.project_id,
+          "--gcp-location", var.region,
+          "--gcs-bucket", "models-artifacts-tfm",
+          "--cloud-build-trigger-url", "reentrenar-modelo"
+        ]
+
+        env {
+          name  = "GCP_PROJECT"
+          value = var.project_id
+        }
+
+        env {
+          name  = "BQ_DATASET"
+          value = "gubernatura_modelos"
+        }
+
+        env {
+          name  = "GCS_BUCKET"
+          value = "models-artifacts-tfm"
+        }
+
+        # ==========================================
+        # SOLUCIÓN AL OUT-OF-MEMORY: LIMITES DE RECURSOS
+        # ==========================================
+        resources {
+          limits = {
+            # Subimos la memoria a 4 Gigabytes y le damos 2 vCPUs para mejorar rendimiento
+            memory = "32 Gi"
+            cpu    = "8"
+          }
+        }
       }
     }
   }

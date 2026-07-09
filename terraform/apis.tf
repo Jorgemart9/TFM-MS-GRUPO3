@@ -1,3 +1,4 @@
+#APIS NECESARIAS PARA EL PROYECTO
 variable "gcp_apis" {
   type = list(string)
 
