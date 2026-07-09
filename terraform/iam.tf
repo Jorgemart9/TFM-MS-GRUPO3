@@ -221,3 +221,9 @@ resource "google_service_account_iam_member" "monitoring_act_as_cloudbuild_evalu
   member              = "serviceAccount:${google_service_account.sa_monitoring.email}"
 }
 
+resource "google_service_account_iam_member" "monitoring_act_as_cloudbuild_v2" {
+  service_account_id = google_service_account.sa_cloudbuild_v2.id
+  role                = "roles/iam.serviceAccountUser"
+  member              = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+

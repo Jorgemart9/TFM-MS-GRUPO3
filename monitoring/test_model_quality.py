@@ -7,10 +7,6 @@ import argparse
 import httpx
 from google.cloud import storage
 import logging
-from fastapi import FastAPI
-
-# Inicialización de la aplicación FastAPI para el Dashboard
-app = FastAPI(title="MLOps Monitoring Dashboard API")
 
 # Configuración del entorno de BigQuery (Variables que usará tu API)
 PROJECT_ID = os.getenv("PROJECT_ID", "tfm-ms-3")
@@ -68,20 +64,11 @@ def trigger_dashboard(results, gcp_project, gcs_bucket):
     except Exception as e:
         print_result("Conexión al Dashboard", False, str(e))
 
-def trigger_cloud_build(trigger_url):
+def trigger_cloud_build(trigger_name_or_url, project_id, location):
     """Dispara el trigger de Cloud Build inyectando credenciales OAuth2 por defecto.
-
-    NOTA: si esto sigue devolviendo 403 PERMISSION_DENIED, es un problema de
-    IAM, no de código. La cuenta de servicio que ejecuta este Cloud Run Job
-    necesita el rol "roles/cloudbuild.builds.editor" (o un rol custom con el
-    permiso "cloudbuild.builds.create") sobre el proyecto/trigger:
-
-        gcloud run jobs describe <NOMBRE_JOB> --region=<REGION> \\
-          --format="value(spec.template.spec.template.spec.serviceAccountName)"
-
-        gcloud projects add-iam-policy-binding <PROJECT_ID> \\
-          --member="serviceAccount:<SA_DEL_JOB>" \\
-          --role="roles/cloudbuild.builds.editor"
+    
+    Resuelve el UUID del trigger en GCP a partir de su nombre descriptivo
+    y envía la rama por defecto ("main") en el cuerpo de la petición.
     """
     try:
         import google.auth
@@ -94,10 +81,46 @@ def trigger_cloud_build(trigger_url):
         credentials.refresh(auth_req)
 
         headers = {"Authorization": f"Bearer {credentials.token}"}
-        response = httpx.post(trigger_url, headers=headers, timeout=30.0)
+        
+        # 1. Resolver el UUID del trigger
+        trigger_id = trigger_name_or_url
+        
+        # Si parece una URL completa, intentamos extraer el nombre del trigger
+        if trigger_name_or_url.startswith("http"):
+            parts = trigger_name_or_url.split("/")
+            if parts:
+                last_part = parts[-1].split(":")[0]  # Obtiene 'reentrenar-modelo' de 'reentrenar-modelo:run'
+                trigger_id = last_part
+
+        # Si el trigger_id no parece un UUID (longitud ~36 y contiene guiones)
+        if len(trigger_id) != 36 or "-" not in trigger_id:
+            logging.info(f"[*] Buscando UUID del trigger con nombre: '{trigger_id}'...")
+            resolved_id = None
+            list_url = f"https://cloudbuild.googleapis.com/v1/projects/{project_id}/locations/{location}/triggers"
+            list_response = httpx.get(list_url, headers=headers, timeout=30.0)
+            if list_response.status_code == 200:
+                triggers_data = list_response.json()
+                for t in triggers_data.get("triggers", []):
+                    if t.get("name") == trigger_id or t.get("id") == trigger_id:
+                        resolved_id = t.get("id")
+                        break
+            if resolved_id:
+                logging.info(f"[+] Trigger '{trigger_id}' resuelto a UUID: {resolved_id}")
+                trigger_id = resolved_id
+            else:
+                logging.warning(f"[!] No se pudo resolver el trigger por nombre a UUID. Intentando llamar con: {trigger_id}")
+
+        # 2. Ejecutar la llamada POST
+        trigger_url = f"https://cloudbuild.googleapis.com/v1/projects/{project_id}/locations/{location}/triggers/{trigger_id}:run"
+        payload = {
+            "branchName": "main"
+        }
+        
+        logging.info(f"[*] Ejecutando POST a {trigger_url} con payload: {payload}")
+        response = httpx.post(trigger_url, headers=headers, json=payload, timeout=30.0)
 
         if response.status_code in [200, 201, 202]:
-            print_result("Trigger de Cloud Build", True, "Pipeline de reentrenamiento disparado correctamente.")
+            print_result("Trigger de Cloud Build", True, f"Pipeline de reentrenamiento ({trigger_id}) disparado correctamente.")
         else:
             print_result("Trigger de Cloud Build", False, f"Error al disparar el trigger: {response.status_code} - {response.text}")
     except Exception as e:
@@ -105,26 +128,46 @@ def trigger_cloud_build(trigger_url):
 
 def download_input_artifacts(model_bucket, model_prefix, raw_data_bucket, raw_data_prefix,
                               metrics_bucket, metrics_prefix):
-    """Descarga a disco local los ficheros necesarios, cada uno desde su bucket/prefijo real.
+    """Descarga a disco local los ficheros necesarios, resolviendo dinámicamente el prefijo del modelo campeón."""
+    client = storage.Client()
+    
+    # 1. Primero descargamos metrics.json para leer de ahí el nombre del modelo campeón
+    metrics_filename = "metrics.json"
+    metrics_prefix = metrics_prefix.strip("/") if metrics_prefix else ""
+    metrics_blob_path = f"{metrics_prefix}/{metrics_filename}" if metrics_prefix else metrics_filename
+    
+    try:
+        logging.info(f"[*] Descargando metrics.json desde gs://{metrics_bucket}/{metrics_blob_path}...")
+        bucket = client.bucket(metrics_bucket)
+        blob = bucket.blob(metrics_blob_path)
+        if blob.exists():
+            blob.download_to_filename(metrics_filename)
+            print_result("Descarga de metrics.json", True, f"Descargado gs://{metrics_bucket}/{metrics_blob_path}")
+        else:
+            print_result("Descarga de metrics.json", False, f"No existe gs://{metrics_bucket}/{metrics_blob_path}")
+    except Exception as e:
+        print_result("Descarga de metrics.json", False, f"Error descargando metrics.json: {e}")
 
-    FIX: antes se asumía que df_completo_cr.csv y model.joblib vivían en el
-    mismo bucket que gcs_bucket (models-artifacts-tfm) bajo el prefijo
-    "preprocess". En realidad:
-      - df_completo_cr.csv  -> bucket "raw-data-tfm"
-      - model.joblib        -> bucket "models-artifacts-tfm", prefijo "models/XGBoost"
-      - metrics.json        -> bucket "models-artifacts-tfm", prefijo "dash" (esto ya funcionaba)
+    # 2. Leer metrics.json si existe para obtener el modelo campeón actual y su prefijo dinámico
+    resolved_model_prefix = model_prefix
+    if os.path.exists(metrics_filename):
+        try:
+            with open(metrics_filename, "r") as f:
+                metrics_data = json.load(f)
+            champion_name = metrics_data.get("champion", {}).get("model_name")
+            if champion_name:
+                resolved_model_prefix = f"models/{champion_name}"
+                logging.info(f"[+] Modelo campeón detectado: '{champion_name}'. Prefijo resuelto a: {resolved_model_prefix}")
+        except Exception as e:
+            logging.warning(f"[!] Error leyendo metrics.json para resolver prefijo del modelo: {e}. Fallback a: {model_prefix}")
 
-    Verifica con `gsutil ls gs://models-artifacts-tfm/models/XGBoost/` el
-    nombre exacto del fichero de modelo si no es literalmente "model.joblib".
-    """
+    # 3. Descargar el resto de archivos requeridos (CSV y modelo)
     expected_files = {
         "df_completo_cr.csv": (raw_data_bucket, raw_data_prefix),
-        "model.joblib": (model_bucket, model_prefix),
-        "metrics.json": (metrics_bucket, metrics_prefix),
+        "model.joblib": (model_bucket, resolved_model_prefix),
     }
 
     try:
-        client = storage.Client()
         downloaded = []
         not_found = []
 
@@ -159,91 +202,7 @@ def download_input_artifacts(model_bucket, model_prefix, raw_data_bucket, raw_da
         print_result("Descarga de Artefactos de Entrada", False, f"Error descargando artefactos: {e}")
 
 
-# ===================================================================
-# ENDPOINT PARA EL DASHBOARD FastAPI (Métricas dinámicas de BigQuery)
-# ===================================================================
-@app.get("/metrics.json")
-async def get_dashboard_metrics():
-    try:
-        # 1. KPIs DEL MODELO CAMPEÓN EN PRODUCCIÓN (XGBoost por defecto)
-        query_champion = f"""
-            SELECT run_id, model_name, accuracy, precision, recall, f1_score, roc_auc,
-                   pipeline_latency, pipeline_error_rate, fecha_registro
-            FROM `{DATASET_REF}.t_modelo_campeon_kpis`
-            ORDER BY fecha_registro DESC
-            LIMIT 1
-        """
-        try:
-            df_champ = bq_client.query(query_champion).to_dataframe() if bq_client else pd.DataFrame()
-        except Exception as e:
-            print(f"[!] Tabla t_modelo_campeon_kpis no disponible: {e}")
-            df_champ = pd.DataFrame()
-
-        if df_champ.empty:
-            champion_data = {
-                "model_name": "XGBoost",
-                "metrics": {
-                    "accuracy": 78.1,
-                    "precision": 48.5,
-                    "recall": 63.8,
-                    "f1_score": 41.37,
-                    "roc_auc": 76.5
-                }
-            }
-            business_data = {"pipeline_latency": 45, "pipeline_error_rate": 0.05}
-        else:
-            row = df_champ.iloc[0]
-            champion_data = {
-                "model_name": row["model_name"],
-                "metrics": {
-                    "accuracy": float(row["accuracy"] * 100 if row["accuracy"] <= 1.0 else row["accuracy"]),
-                    "precision": float(row["precision"] * 100 if row["precision"] <= 1.0 else row["precision"]),
-                    "recall": float(row["recall"] * 100 if row["recall"] <= 1.0 else row["recall"]),
-                    "f1_score": float(row["f1_score"] * 100 if row["f1_score"] <= 1.0 else row["f1_score"]),
-                    "roc_auc": float(row["roc_auc"] * 100 if row["roc_auc"] <= 1.0 else row["roc_auc"])
-                }
-            }
-            business_data = {
-                "pipeline_latency": int(row["pipeline_latency"]) if not pd.isna(row["pipeline_latency"]) else 45,
-                "pipeline_error_rate": float(row["pipeline_error_rate"]) if not pd.isna(row["pipeline_error_rate"]) else 0.0
-            }
-
-        # 2. COMPARATIVA DE MODELOS CANDIDATOS
-        query_comp = f"""
-            SELECT model_name, f1_score, roc_auc, accuracy, recall, es_campeon
-            FROM `{DATASET_REF}.t_modelo_comparativa`
-            ORDER BY f1_score DESC
-        """
-        try:
-            df_comp = bq_client.query(query_comp).to_dataframe() if bq_client else pd.DataFrame()
-        except Exception as e:
-            print(f"[!] Tabla t_modelo_comparativa no disponible: {e}")
-            df_comp = pd.DataFrame()
-
-        comparison_list = []
-        if df_comp.empty:
-            comparison_list = [
-                {"name": "XGBoost", "f1": 0.4137, "roc_auc": 0.765, "accuracy": 0.781, "recall": 0.638},
-                {"name": "LightGBM", "f1": 0.4142, "roc_auc": 0.769, "accuracy": 0.785, "recall": 0.6412},
-                {"name": "CatBoost", "f1": 0.4089, "roc_auc": 0.761, "accuracy": 0.779, "recall": 0.625}
-            ]
-        else:
-            for _, r in df_comp.iterrows():
-                comparison_list.append({
-                    "name": r["model_name"],
-                    "f1": float(r["f1_score"]),
-                    "roc_auc": float(r["roc_auc"] / 100.0 if r["roc_auc"] > 1.0 else r["roc_auc"]),
-                    "accuracy": float(r["accuracy"] / 100.0 if r["accuracy"] > 1.0 else r["accuracy"]),
-                    "recall": float(r["recall"] / 100.0 if r["recall"] > 1.0 else r["recall"])
-                })
-
-        return {
-            "champion": champion_data,
-            "business": business_data,
-            "comparative": comparison_list
-        }
-    except Exception as e:
-        return {"error": str(e)}
+# API Endpoint para metrics.json eliminado por redundancia (el Dashboard consume desde dash/app.py)
 
 
 def run_quality_tests():
@@ -452,7 +411,9 @@ def run_quality_tests():
     trigger_dashboard(results, args.gcp_project, args.gcs_bucket)
 
     if drift_detected:
-        trigger_cloud_build(args.cloud_build_trigger_url)
+        project_id = args.gcp_project or os.getenv("GCP_PROJECT") or os.getenv("PROJECT_ID") or "tfm-ms-3"
+        location = args.gcp_location or "europe-west1"
+        trigger_cloud_build(args.cloud_build_trigger_url, project_id, location)
 
     print("=" * 60)
     if all_success:

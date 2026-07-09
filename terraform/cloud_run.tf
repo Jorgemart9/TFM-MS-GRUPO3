@@ -95,7 +95,7 @@ resource "google_cloud_run_v2_job" "monitoring_job" {
       service_account = google_service_account.sa_monitoring.email
 
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.monitoring_repo.name}/monitoring-app:latest"
+        image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.monitoring_repo.name}/test_model_quality:latest"
 
         # 1. FORZAMOS EL COMANDO BASE
         command = ["python"]
@@ -106,7 +106,7 @@ resource "google_cloud_run_v2_job" "monitoring_job" {
           "--gcp-project", var.project_id,
           "--gcp-location", var.region,
           "--gcs-bucket", "models-artifacts-tfm",
-          "--cloud-build-trigger-url", "https://cloudbuild.googleapis.com/v1/projects/${var.project_id}/locations/${var.region}/triggers/evaluar-y-exportar-metricas-modelo:run"
+          "--cloud-build-trigger-url", "reentrenar-modelo"
         ]
 
         env {

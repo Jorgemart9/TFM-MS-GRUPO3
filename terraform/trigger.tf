@@ -12,7 +12,7 @@ resource "google_cloudbuild_trigger" "model_evaluation_trigger" {
     repo_type = "GITHUB"
   }
 
-  filename = "cloudbuild.yaml"
+  filename = "validacion/cloudbuild.yml"
 
   substitutions = {
     _PROJECT_ID      = var.project_id
@@ -47,5 +47,30 @@ resource "google_cloudbuild_trigger" "model_test_trigger" {
     _BQ_DATASET_RAW    = "analytics_warehouse"
     _GCS_BUCKET        = "models-artifacts-tfm"
     _SA_VERTEX_TRAIN   = "sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
+  }
+}
+
+
+resource "google_cloudbuild_trigger" "model_training_trigger" {
+  project     = var.project_id
+  name        = "reentrenar-modelo"
+  description = "Trigger para lanzar el reentrenamiento de modelos en Vertex AI"
+  location    = "europe-west1"
+
+  service_account = google_service_account.sa_cloudbuild_v2.id
+
+  source_to_build {
+    uri       = "https://github.com/tu-usuario-o-organizacion/TFM-MS-GRUPO3"
+    ref       = "refs/heads/main"
+    repo_type = "GITHUB"
+  }
+
+  filename = "cloudbuild-train.yaml"
+
+  substitutions = {
+    _PROJECT_ID      = var.project_id
+    _LOCATION        = "europe-west1"
+    _GCS_BUCKET      = "models-artifacts-tfm"
+    _SA_VERTEX_TRAIN = "sa-vertex-train@${var.project_id}.iam.gserviceaccount.com"
   }
 }

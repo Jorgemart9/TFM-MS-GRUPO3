@@ -1,0 +1,13 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'ai'
+      - 'custom-jobs'
+      - 'create'
+      - '--region=europe-west1'
+      - '--display-name=reentreno-vertex-job'
+      - '--worker-pool-spec=machine-type=n1-standard-4,container-image-uri=europe-west1-docker.pkg.dev/$_PROJECT_ID/training-repo/training-pipeline:latest'
+      - '--service-account=$_SA_VERTEX_TRAIN'
+options:
+  logging: CLOUD_LOGGING_ONLY

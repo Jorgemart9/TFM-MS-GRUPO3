@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'jobs'
+      - 'execute'
+      - 'monitoring'
+      - '--region=europe-west1'
+      - '--wait'
+options:
+  logging: CLOUD_LOGGING_ONLY
