@@ -85,12 +85,12 @@ jobs:
           --region=${{ env.REGION }} \
           --quiet
 
-    - name: Update Monitoring Cloud Run Job
+    - name: Actualizando Cloud Run Job para Monitoreo de Calidad
       run: |
-        echo "[*] Actualizando Cloud Run Job de Monitorización..."
-        gcloud run jobs update monitoring \
-          --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest \
-          --region=${{ env.REGION }} \
+        echo "[*] Actualizando Cloud Run Job para Monitoreo de Calidad..."
+        gcloud run jobs update test-model-quality \
+          --image=europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/test_model_quality:latest \
+          --region=europe-west1 \
           --quiet
 
     - name: Deploy Dashboard Cloud Run Service
