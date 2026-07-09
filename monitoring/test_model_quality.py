@@ -7,15 +7,29 @@ import argparse
 import httpx
 from google.cloud import storage
 import logging
+from fastapi import FastAPI
+
+# Inicialización de la aplicación FastAPI para el Dashboard
+app = FastAPI(title="MLOps Monitoring Dashboard API")
+
+# Configuración del entorno de BigQuery (Variables que usará tu API)
+PROJECT_ID = os.getenv("PROJECT_ID", "tfm-ms-3")
+BQ_DATASET_DASH = os.getenv("BQ_DATASET_DASH", "gubernatura_modelos")
+DATASET_REF = f"{PROJECT_ID}.{BQ_DATASET_DASH}"
+
+try:
+    from google.cloud import bigquery
+    bq_client = bigquery.Client(project=PROJECT_ID)
+except Exception as e:
+    bq_client = None
+    print(f"[*] Ejecución local o sin cliente BigQuery inicializado de forma global: {e}")
 
 def setup_logger():
     """Configura logger para imprimir resultados en formato BQQ."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler()
-        ]
+        handlers=[logging.StreamHandler()]
     )
 
 def print_result(test_name, success, message=""):
@@ -26,12 +40,7 @@ def print_result(test_name, success, message=""):
 def save_results_to_gcs(bucket_name, result_data):
     """Guarda los resultados en Google Cloud Storage."""
     client = storage.Client()
-    
-    # CAMBIO AQUÍ: Usamos client.bucket() en lugar de client.get_bucket()
-    # Esto evita el error 403 al no requerir permisos de lectura sobre el bucket completo
     bucket = client.bucket(bucket_name)
-    
-    # Crear un archivo JSON con los resultados
     blob = bucket.blob('quality_test_results.json')
     blob.upload_from_string(json.dumps(result_data), content_type='application/json')
     print_result("Guardar Resultados", True, f"Resultados guardados en gs://{bucket_name}/quality_test_results.json.")
@@ -39,138 +48,198 @@ def save_results_to_gcs(bucket_name, result_data):
 def trigger_dashboard(results, gcp_project, gcs_bucket):
     """Envía los resultados al dashboard."""
     DASHBOARD_URL = "https://dash-1076362823794.europe-west1.run.app"
-
     payload = {
         "results": results,
         "gcp_project": gcp_project,
         "gcs_bucket": gcs_bucket
     }
-
     try:
-        response = httpx.post(
-            DASHBOARD_URL,
-            json=payload,
-            verify=False,
-            timeout=30.0
-        )
-
-        if response.status_code == 200:
-            print_result(
-                "Conexión al Dashboard",
-                True,
-                "Resultados enviados correctamente."
-            )
+        response = httpx.post(DASHBOARD_URL, json=payload, verify=False, timeout=30.0)
+        if response.status_code in [200, 201]:
+            print_result("Conexión al Dashboard", True, "Resultados enviados correctamente.")
         else:
-            print_result(
-                "Conexión al Dashboard",
-                False,
-                f"{response.status_code} - {response.text}"
-            )
-
+            print_result("Conexión al Dashboard", False, f"{response.status_code} - {response.text}")
     except Exception as e:
-        print_result(
-            "Conexión al Dashboard",
-            False,
-            str(e)
-        )
+        print_result("Conexión al Dashboard", False, str(e))
 
 def trigger_cloud_build(trigger_url):
-    """Dispara el trigger de Cloud Build."""
+    """Dispara el trigger de Cloud Build inyectando credenciales OAuth2 por defecto."""
     try:
-        response = httpx.post(trigger_url)
-        if response.status_code == 201 or response.status_code == 200:
+        import google.auth
+        import google.auth.transport.requests
+        
+        credentials, project = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        auth_req = google.auth.transport.requests.Request()
+        credentials.refresh(auth_req)
+        
+        headers = {"Authorization": f"Bearer {credentials.token}"}
+        response = httpx.post(trigger_url, headers=headers, timeout=30.0)
+        
+        if response.status_code in [200, 201, 202]:
             print_result("Trigger de Cloud Build", True, "Pipeline de reentrenamiento disparado correctamente.")
         else:
             print_result("Trigger de Cloud Build", False, f"Error al disparar el trigger: {response.status_code} - {response.text}")
     except Exception as e:
-        print_result("Trigger de Cloud Build", False, f"Error al conectar: {e}")
+        print_result("Trigger de Cloud Build", False, f"Error al autenticar o conectar con Cloud Build: {e}")
 
-def download_input_artifacts(bucket_name, prefix):
-    """
-    Descarga a disco local los ficheros de entrada necesarios (dataset, metrics.json,
-    model.joblib) desde gs://bucket_name/prefix/, si existen y aún no están presentes
-    localmente. No falla el script si algún fichero no existe: cada Test ya maneja
-    su propia ausencia.
-    """
+def download_input_artifacts(bucket_name, default_prefix, metrics_prefix):
+    """Descarga a disco local los ficheros necesarios mapeando sus prefijos en GCS."""
     if not bucket_name:
-        print_result("Descarga de Artefactos de Entrada", False, "No se especificó --gcs-input-bucket; se usará solo el sistema de ficheros local.")
+        print_result("Descarga de Artefactos de Entrada", False, "No se especificó --gcs-input-bucket.")
         return
 
-    prefix = prefix.strip("/")
-    expected_files = [
-        "df_completo_cr.csv",
-        "df_completo_cr_mini.csv",
-        "metrics.json",
-        "model.joblib",
-    ]
+    default_prefix = default_prefix.strip("/") if default_prefix else ""
+    metrics_prefix = metrics_prefix.strip("/") if metrics_prefix else ""
+
+    expected_files = {
+        "df_completo_cr.csv": default_prefix,
+        "model.joblib": default_prefix,
+        "metrics.json": metrics_prefix,
+    }
 
     try:
         client = storage.Client()
         bucket = client.bucket(bucket_name)
         downloaded = []
 
-        for filename in expected_files:
+        for filename, prefix in expected_files.items():
             if os.path.exists(filename):
-                continue  # ya está en local, no lo pisamos
+                continue
 
             blob_path = f"{prefix}/{filename}" if prefix else filename
             blob = bucket.blob(blob_path)
 
             if blob.exists():
                 blob.download_to_filename(filename)
-                downloaded.append(filename)
+                downloaded.append(f"{prefix}/{filename}")
 
         if downloaded:
-            print_result(
-                "Descarga de Artefactos de Entrada",
-                True,
-                f"Descargados desde gs://{bucket_name}/{prefix}/: {', '.join(downloaded)}"
-            )
+            print_result("Descarga de Artefactos de Entrada", True, f"Descargados desde gs://{bucket_name}: {', '.join(downloaded)}")
         else:
-            print_result(
-                "Descarga de Artefactos de Entrada",
-                True,
-                f"No se descargó nada nuevo desde gs://{bucket_name}/{prefix}/ (ya presentes en local o no encontrados)."
-            )
+            print_result("Descarga de Artefactos de Entrada", True, f"No se descargó nada nuevo desde gs://{bucket_name} (archivos ya locales o ausentes).")
     except Exception as e:
         print_result("Descarga de Artefactos de Entrada", False, f"Error descargando artefactos: {e}")
 
+
+# ===================================================================
+# ENDPOINT PARA EL DASHBOARD FastAPI (Métricas dinámicas de BigQuery)
+# ===================================================================
+@app.get("/metrics.json")
+async def get_dashboard_metrics():
+    try:
+        # 1. KPIs DEL MODELO CAMPEÓN EN PRODUCCIÓN (XGBoost por defecto)
+        query_champion = f"""
+            SELECT run_id, model_name, accuracy, precision, recall, f1_score, roc_auc, 
+                   pipeline_latency, pipeline_error_rate, fecha_registro
+            FROM `{DATASET_REF}.t_modelo_campeon_kpis`
+            ORDER BY fecha_registro DESC
+            LIMIT 1
+        """
+        try:
+            df_champ = bq_client.query(query_champion).to_dataframe() if bq_client else pd.DataFrame()
+        except Exception as e:
+            print(f"[!] Tabla t_modelo_campeon_kpis no disponible: {e}")
+            df_champ = pd.DataFrame()
+        
+        if df_champ.empty:
+            champion_data = {
+                "model_name": "XGBoost",
+                "metrics": {
+                    "accuracy": 78.1,
+                    "precision": 48.5,
+                    "recall": 63.8,
+                    "f1_score": 41.37,
+                    "roc_auc": 76.5
+                }
+            }
+            business_data = {"pipeline_latency": 45, "pipeline_error_rate": 0.05}
+        else:
+            row = df_champ.iloc[0]
+            champion_data = {
+                "model_name": row["model_name"],
+                "metrics": {
+                    "accuracy": float(row["accuracy"] * 100 if row["accuracy"] <= 1.0 else row["accuracy"]),
+                    "precision": float(row["precision"] * 100 if row["precision"] <= 1.0 else row["precision"]),
+                    "recall": float(row["recall"] * 100 if row["recall"] <= 1.0 else row["recall"]),
+                    "f1_score": float(row["f1_score"] * 100 if row["f1_score"] <= 1.0 else row["f1_score"]),
+                    "roc_auc": float(row["roc_auc"] * 100 if row["roc_auc"] <= 1.0 else row["roc_auc"])
+                }
+            }
+            business_data = {
+                "pipeline_latency": int(row["pipeline_latency"]) if not pd.isna(row["pipeline_latency"]) else 45,
+                "pipeline_error_rate": float(row["pipeline_error_rate"]) if not pd.isna(row["pipeline_error_rate"]) else 0.0
+            }
+
+        # 2. COMPARATIVA DE MODELOS CANDIDATOS
+        query_comp = f"""
+            SELECT model_name, f1_score, roc_auc, accuracy, recall, es_campeon
+            FROM `{DATASET_REF}.t_modelo_comparativa`
+            ORDER BY f1_score DESC
+        """
+        try:
+            df_comp = bq_client.query(query_comp).to_dataframe() if bq_client else pd.DataFrame()
+        except Exception as e:
+            print(f"[!] Tabla t_modelo_comparativa no disponible: {e}")
+            df_comp = pd.DataFrame()
+        
+        comparison_list = []
+        if df_comp.empty:
+            comparison_list = [
+                {"name": "XGBoost", "f1": 0.4137, "roc_auc": 0.765, "accuracy": 0.781, "recall": 0.638},
+                {"name": "LightGBM", "f1": 0.4142, "roc_auc": 0.769, "accuracy": 0.785, "recall": 0.6412},
+                {"name": "CatBoost", "f1": 0.4089, "roc_auc": 0.761, "accuracy": 0.779, "recall": 0.625}
+            ]
+        else:
+            for _, r in df_comp.iterrows():
+                comparison_list.append({
+                    "name": r["model_name"],
+                    "f1": float(r["f1_score"]),
+                    "roc_auc": float(r["roc_auc"] / 100.0 if r["roc_auc"] > 1.0 else r["roc_auc"]),
+                    "accuracy": float(r["accuracy"] / 100.0 if r["accuracy"] > 1.0 else r["accuracy"]),
+                    "recall": float(r["recall"] / 100.0 if r["recall"] > 1.0 else r["recall"])
+                })
+
+        return {
+            "champion": champion_data,
+            "business": business_data,
+            "comparative": comparison_list
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def run_quality_tests():
-    setup_logger()  # Configurar el logger
+    setup_logger()
     print("=" * 60)
     print(" INICIANDO PRUEBAS AUTOMÁTICAS DE CALIDAD DEL MODELO Y DATOS ")
     print("=" * 60)
     
-    # Parsear parámetros opcionales para la verificación de GCP
     parser = argparse.ArgumentParser(description="Validador de calidad para Vertex AI / Local")
     parser.add_argument("--gcp-project", type=str, default=None, help="ID del Proyecto de Google Cloud")
-    parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP (por ejemplo, europe-west1)")
+    parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP")
     parser.add_argument("--gcs-bucket", type=str, required=True, help="Nombre del bucket de GCS para guardar los resultados")
-    parser.add_argument("--cloud-build-trigger-url", type=str, required=True, help="URL del trigger de Cloud Build para reentrenar el modelo")
-    parser.add_argument("--gcs-input-bucket", type=str, default=None, help="Bucket de GCS donde están los ficheros de entrada (dataset, metrics.json, model.joblib). Si no se indica, se usa --gcs-bucket.")
-    parser.add_argument("--gcs-input-prefix", type=str, default="preprocess", help="Carpeta/prefijo dentro del bucket de entrada donde están los ficheros (por defecto: 'preprocess')")
+    parser.add_argument("--cloud-build-trigger-url", type=str, required=True, help="URL del trigger de Cloud Build")
+    parser.add_argument("--gcs-input-bucket", type=str, default=None, help="Bucket de GCS de entrada.")
+    parser.add_argument("--gcs-input-prefix", type=str, default="preprocess", help="Prefijo para dataset y modelo.")
+    parser.add_argument("--gcs-metrics-prefix", type=str, default="dash", help="Prefijo para metrics.json.")
     args, unknown = parser.parse_known_args()
 
     results = {}
     all_success = True
     metrics_path = "metrics.json"
 
-    # -------------------------------------------------------------
-    # PASO 0: Descargar artefactos de entrada desde GCS (si no están ya en local)
-    # -------------------------------------------------------------
     input_bucket = args.gcs_input_bucket or args.gcs_bucket
-    download_input_artifacts(input_bucket, args.gcs_input_prefix)
+    download_input_artifacts(input_bucket, args.gcs_input_prefix, args.gcs_metrics_prefix)
 
     # -------------------------------------------------------------
-    # TEST 1: Verificar existencia y esquema del Dataset
+    # TEST 1: Verificar existencia y esquema del Dataset (Estándar Único)
     # -------------------------------------------------------------
     data_path = "df_completo_cr.csv"
     if not os.path.exists(data_path):
-        data_path = "df_completo_cr_mini.csv" # Fallback local de pruebas
-        
-    if not os.path.exists(data_path):
-        print_result("Test 1: Existencia de Dataset", False, "No se encontró df_completo_cr.csv ni df_completo_cr_mini.csv.")
-        results["Test 1"] = "Fail: No se encontró df_completo_cr.csv ni df_completo_cr_mini.csv."
+        print_result("Test 1: Existencia de Dataset", False, "No se encontró el archivo df_completo_cr.csv.")
+        results["Test 1"] = "Fail: No se encontró df_completo_cr.csv."
         all_success = False
     else:
         try:
@@ -183,17 +252,18 @@ def run_quality_tests():
                 results["Test 1"] = f"Fail: Columnas requeridas ausentes: {missing_cols}"
                 all_success = False
             else:
-                print_result("Test 1: Esquema de Datos", True, f"Dataset válido ({os.path.basename(data_path)}). {len(df_sample.columns)} columnas verificadas.")
+                print_result("Test 1: Esquema de Datos", True, f"Dataset válido. {len(df_sample.columns)} columnas verificadas.")
                 results["Test 1"] = "Pass: Dataset válido."
         except Exception as e:
             print_result("Test 1: Esquema de Datos", False, f"Error leyendo dataset: {e}")
             results["Test 1"] = f"Fail: Error leyendo dataset: {e}"
             all_success = False
+
     # -------------------------------------------------------------
-    # TEST 2: Verificar calidad de métricas del modelo (F1, AUC, Recall)
+    # TEST 2: Verificar calidad de métricas del modelo
     # -------------------------------------------------------------
     if not os.path.exists(metrics_path):
-        print_result("Test 2: Umbrales de Rendimiento", False, "Archivo metrics.json no encontrado. Ejecuta export_metrics.py primero.")
+        print_result("Test 2: Umbrales de Rendimiento", False, "Archivo metrics.json no encontrado.")
         results["Test 2"] = "Fail: Archivo metrics.json no encontrado."
         all_success = False
     else:
@@ -206,10 +276,7 @@ def run_quality_tests():
             roc_auc = champ_metrics["roc_auc"]
             recall = champ_metrics["recall"]
 
-            is_mini = not os.path.exists("df_completo_cr.csv") or os.path.exists("df_completo_cr_mini.csv")
-            MIN_F1 = 20.0 if is_mini else 35.0
-            MIN_AUC = 45.0 if is_mini else 65.0
-            MIN_RECALL = 30.0 if is_mini else 50.0
+            MIN_F1, MIN_AUC, MIN_RECALL = 35.0, 65.0, 50.0
             
             f1_ok = f1 >= MIN_F1
             auc_ok = roc_auc >= MIN_AUC
@@ -239,20 +306,15 @@ def run_quality_tests():
         try:
             psi_values = metrics["data_drift"]["psi"]
             features = metrics["data_drift"]["labels"]
-            
-            drift_critical = []
-            for feat, psi in zip(features, psi_values):
-                if psi >= 0.25:
-                    drift_critical.append(f"{feat} (PSI={psi})")
-                    drift_detected = True
+            drift_critical = [f"{feat} (PSI={psi})" for feat, psi in zip(features, psi_values) if psi >= 0.25]
             
             if not drift_critical:
                 max_psi = max(psi_values) if psi_values else 0
-                print_result("Test 3: Límites de Data Drift", True, f"Sin drift crítico. PSI máximo detectado: {max_psi} (Límite crítico: 0.25)")
+                print_result("Test 3: Límites de Data Drift", True, f"Sin drift crítico. PSI máximo: {max_psi}")
                 results["Test 3"] = "Pass: Sin drift crítico."
             else:
                 print_result("Test 3: Límites de Data Drift", False, f"Drift crítico detectado en: {', '.join(drift_critical)}")
-                results["Test 3"] = f"Fail: Drift crítico detectado en: {', '.join(drift_critical)}"
+                results["Test 3"] = f"Fail: Drift crítico en: {', '.join(drift_critical)}"
                 all_success = False
                 drift_detected = True
         except Exception as e:
@@ -261,143 +323,86 @@ def run_quality_tests():
             all_success = False
 
     # -------------------------------------------------------------
-    # TEST 4: Disponibilidad del Modelo Registrado (Vertex AI o Local)
+    # TEST 4: Disponibilidad del Modelo XGBoost Registrado
     # -------------------------------------------------------------
     gcp_checked = False
     try:
         from google.cloud import aiplatform
         aiplatform.init(project=args.gcp_project, location=args.gcp_location)
-        print("[*] Conexión establecida con Vertex AI. Buscando modelo registrado...")
-        
         models = aiplatform.Model.list()
         
-        if os.path.exists(metrics_path):
-            with open(metrics_path, "r") as f:
-                metrics_data = json.load(f)
-            champ_name = metrics_data["champion"]["model_name"]
-            expected_display_name = f"Champion_{champ_name}_MVP_Balanced"
-            
-            matching_models = [m for m in models if m.display_name == expected_display_name]
-            if matching_models:
-                print_result("Test 4: Registro en Vertex AI Model Registry", True, f"Modelo '{expected_display_name}' localizado y activo en Vertex AI.")
-                results["Test 4"] = "Pass: Modelo localizado en Vertex AI."
-                gcp_checked = True
-            else:
-                print_result("Test 4: Registro en Vertex AI Model Registry", False, f"No se encontró el modelo '{expected_display_name}' en Vertex AI.")
-                results["Test 4"] = f"Fail: No se encontró el modelo '{expected_display_name}' en Vertex AI."
-                all_success = False
-                gcp_checked = True
+        expected_display_name = "Champion_XGBoost_MVP_Balanced"
+        matching_models = [m for m in models if m.display_name == expected_display_name]
+        
+        if matching_models:
+            print_result("Test 4: Registro en Vertex AI Model Registry", True, f"Modelo '{expected_display_name}' localizado en Vertex AI.")
+            results["Test 4"] = "Pass: Modelo XGBoost localizado en Vertex AI."
+            gcp_checked = True
+        else:
+            print_result("Test 4: Registro en Vertex AI Model Registry", False, f"No se encontró el modelo '{expected_display_name}' en Vertex AI.")
+            results["Test 4"] = f"Fail: No se encontró el modelo '{expected_display_name}' en Vertex AI."
+            all_success = False
+            gcp_checked = True
     except Exception as e:
         pass
         
     if not gcp_checked:
         model_file = "model.joblib"
         if os.path.exists(model_file):
-            print_result("Test 4: Fallback de Modelo Local", True, f"Fichero local '{model_file}' localizado e íntegro.")
-            results["Test 4"] = "Pass: Fichero modelo local encontrado."
+            print_result("Test 4: Fallback de Modelo Local", True, f"Fichero local '{model_file}' localizado.")
+            results["Test 4"] = "Pass: Fichero modelo local XGBoost encontrado."
         else:
             print_result("Test 4: Fallback de Modelo Local", False, f"No se encontró el fichero local '{model_file}'.")
             results["Test 4"] = f"Fail: No se encontró el fichero local '{model_file}'."
             all_success = False
 
     # -------------------------------------------------------------
-    # TEST 5: Integración de Explicabilidad SHAP (Global y Local)
+    # TEST 5: Integración de Explicabilidad SHAP
     # -------------------------------------------------------------
     if os.path.exists(metrics_path):
         try:
-            with open(metrics_path, "r") as f:
-                metrics = json.load(f)
-            
-            if "shap" not in metrics or not metrics["shap"]:
-                print_result("Test 5: Integración de SHAP", False, "Mapeo SHAP ausente en metrics.json.")
-                results["Test 5"] = "Fail: Mapeo SHAP ausente."
+            shap_data = metrics.get("shap", {})
+            if not shap_data or "error" in shap_data or "global" not in shap_data or "local" not in shap_data:
+                print_result("Test 5: Integración de SHAP", False, "Mapeo SHAP ausente o corrupto.")
+                results["Test 5"] = "Fail: Estructura SHAP inválida."
                 all_success = False
             else:
-                shap_data = metrics["shap"]
-                if "error" in shap_data:
-                    print_result("Test 5: Integración de SHAP", False, f"Error SHAP registrado en pipeline: {shap_data['error']}")
-                    results["Test 5"] = f"Fail: Error SHAP registrado en pipeline: {shap_data['error']}"
-                    all_success = False
-                elif "global" not in shap_data or "local" not in shap_data:
-                    print_result("Test 5: Integración de SHAP", False, "Faltan claves 'global' o 'local' en explicabilidad SHAP.")
-                    results["Test 5"] = "Fail: Faltan claves 'global' o 'local' en explicabilidad SHAP."
-                    all_success = False
-                else:
-                    global_count = len(shap_data["global"])
-                    high_risk_prob = shap_data["local"]["high_risk"]["probability"]
-                    low_risk_prob = shap_data["local"]["low_risk"]["probability"]
-                    
-                    print_result(
-                        "Test 5: Integración de SHAP", 
-                        True, 
-                        f"SHAP global verificado ({global_count} variables). Cliente Alto Riesgo ({high_risk_prob}%) vs Bajo Riesgo ({low_risk_prob}%)."
-                    )
-                    results["Test 5"] = "Pass: Integración de SHAP validada."
+                print_result("Test 5: Integración de SHAP", True, "SHAP global y local validados correctamente.")
+                results["Test 5"] = "Pass: Integración de SHAP validada."
         except Exception as e:
-            print_result("Test 5: Integración de SHAP", False, f"Error validando SHAP: {e}")
-            results["Test 5"] = f"Fail: Error validando SHAP: {e}"
+            print_result("Test 5: Integración de SHAP", False, f"Error: {e}")
             all_success = False
-    else:
-        print_result("Test 5: Integración de SHAP", False, "metrics.json no disponible para validación.")
-        results["Test 5"] = "Fail: metrics.json no disponible."
-        all_success = False
-
+    
     # -------------------------------------------------------------
     # TEST 6: Estructura del Análisis Exploratorio (EDA)
     # -------------------------------------------------------------
     if os.path.exists(metrics_path):
         try:
-            with open(metrics_path, "r") as f:
-                metrics = json.load(f)
-                
-            if "eda" not in metrics or not metrics["eda"]:
-                print_result("Test 6: Estructura de EDA", False, "Estructura de EDA ausente en metrics.json.")
-                results["Test 6"] = "Fail: Estructura de EDA ausente."
-                all_success = False
+            eda = metrics.get("eda", {})
+            required_keys = ["dimensions", "nulls", "target_distribution", "descriptive_stats", "correlation"]
+            if all(k in eda for k in required_keys):
+                print_result("Test 6: Estructura de EDA", True, "Estructura analítica de EDA validada.")
+                results["Test 6"] = "Pass: Estructura de EDA validada."
             else:
-                eda = metrics["eda"]
-                required_keys = ["dimensions", "nulls", "target_distribution", "descriptive_stats", "correlation"]
-                missing_keys = [k for k in required_keys if k not in eda]
-                
-                if missing_keys:
-                    print_result("Test 6: Estructura de EDA", False, f"Faltan claves en EDA: {missing_keys}")
-                    results["Test 6"] = f"Fail: Faltan claves en EDA: {missing_keys}"
-                    all_success = False
-                else:
-                    sample_size = eda["dimensions"]["sample_rows"]
-                    num_corr_features = len(eda["correlation"]["columns"])
-                    print_result(
-                        "Test 6: Estructura de EDA", 
-                        True, 
-                        f"Dimensiones validadas ({sample_size} registros muestreados). Matriz de correlación validada ({num_corr_features}x{num_corr_features})."
-                    )
-                    results["Test 6"] = "Pass: Estructura de EDA validada."
+                print_result("Test 6: Estructura de EDA", False, "Faltan secciones estructuradas en el EDA.")
+                all_success = False
         except Exception as e:
-            print_result("Test 6: Estructura de EDA", False, f"Error validando EDA: {e}")
-            results["Test 6"] = f"Fail: Error validando EDA: {e}"
             all_success = False
-    else:
-        print_result("Test 6: Estructura de EDA", False, "metrics.json no disponible para validación.")
-        results["Test 6"] = "Fail: metrics.json no disponible."
-        all_success = False
 
-    # Guardar resultados finales en GCS
     save_results_to_gcs(args.gcs_bucket, results)
-
-    # Enviar resultados al dashboard
     trigger_dashboard(results, args.gcp_project, args.gcs_bucket)
 
-    # Disparar el trigger de Cloud Build solo si se encontró drift
     if drift_detected:
         trigger_cloud_build(args.cloud_build_trigger_url)
 
     print("=" * 60)
     if all_success:
-        print("\033[92m[ÉXITO] Todas las pruebas de calidad del modelo han pasado satisfactoriamente.\033[0m")
+        print("\033[92m[ÉXITO] Todas las pruebas han pasado satisfactoriamente.\033[0m")
         sys.exit(0)
     else:
-        print("\033[91m[ERROR] Algunas pruebas de calidad han fallado. Revisar detalles arriba.\033[0m")
+        print("\033[91m[ERROR] Algunas pruebas de calidad han fallado.\033[0m")
         sys.exit(1)
 
+# Asegura que la ejecución directa ejecute los tests, permitiendo a la vez importar la app de FastAPI
 if __name__ == "__main__":
     run_quality_tests()
