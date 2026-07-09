@@ -5,3 +5,5 @@ numpy==1.23.5
 google-cloud-aiplatform==1.30.0
 google-cloud-storage
 httpx
+fastapi
+uvicorn

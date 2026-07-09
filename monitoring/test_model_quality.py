@@ -46,8 +46,14 @@ def save_results_to_gcs(bucket_name, result_data):
     print_result("Guardar Resultados", True, f"Resultados guardados en gs://{bucket_name}/quality_test_results.json.")
 
 def trigger_dashboard(results, gcp_project, gcs_bucket):
-    """Envía los resultados al dashboard."""
-    DASHBOARD_URL = "https://dash-1076362823794.europe-west1.run.app"
+    """Envía los resultados al dashboard.
+
+    FIX: la app de FastAPI del dashboard solo expone GET en "/" y en
+    "/metrics.json". Postear a la raíz devolvía 405 Method Not Allowed.
+    Ahora se apunta al endpoint POST dedicado "/quality-results"
+    (ver app.py del backend del dashboard).
+    """
+    DASHBOARD_URL = "https://dash-1076362823794.europe-west1.run.app/quality-results"
     payload = {
         "results": results,
         "gcp_project": gcp_project,
@@ -63,20 +69,33 @@ def trigger_dashboard(results, gcp_project, gcs_bucket):
         print_result("Conexión al Dashboard", False, str(e))
 
 def trigger_cloud_build(trigger_url):
-    """Dispara el trigger de Cloud Build inyectando credenciales OAuth2 por defecto."""
+    """Dispara el trigger de Cloud Build inyectando credenciales OAuth2 por defecto.
+
+    NOTA: si esto sigue devolviendo 403 PERMISSION_DENIED, es un problema de
+    IAM, no de código. La cuenta de servicio que ejecuta este Cloud Run Job
+    necesita el rol "roles/cloudbuild.builds.editor" (o un rol custom con el
+    permiso "cloudbuild.builds.create") sobre el proyecto/trigger:
+
+        gcloud run jobs describe <NOMBRE_JOB> --region=<REGION> \\
+          --format="value(spec.template.spec.template.spec.serviceAccountName)"
+
+        gcloud projects add-iam-policy-binding <PROJECT_ID> \\
+          --member="serviceAccount:<SA_DEL_JOB>" \\
+          --role="roles/cloudbuild.builds.editor"
+    """
     try:
         import google.auth
         import google.auth.transport.requests
-        
+
         credentials, project = google.auth.default(
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
         auth_req = google.auth.transport.requests.Request()
         credentials.refresh(auth_req)
-        
+
         headers = {"Authorization": f"Bearer {credentials.token}"}
         response = httpx.post(trigger_url, headers=headers, timeout=30.0)
-        
+
         if response.status_code in [200, 201, 202]:
             print_result("Trigger de Cloud Build", True, "Pipeline de reentrenamiento disparado correctamente.")
         else:
@@ -84,41 +103,58 @@ def trigger_cloud_build(trigger_url):
     except Exception as e:
         print_result("Trigger de Cloud Build", False, f"Error al autenticar o conectar con Cloud Build: {e}")
 
-def download_input_artifacts(bucket_name, default_prefix, metrics_prefix):
-    """Descarga a disco local los ficheros necesarios mapeando sus prefijos en GCS."""
-    if not bucket_name:
-        print_result("Descarga de Artefactos de Entrada", False, "No se especificó --gcs-input-bucket.")
-        return
+def download_input_artifacts(model_bucket, model_prefix, raw_data_bucket, raw_data_prefix,
+                              metrics_bucket, metrics_prefix):
+    """Descarga a disco local los ficheros necesarios, cada uno desde su bucket/prefijo real.
 
-    default_prefix = default_prefix.strip("/") if default_prefix else ""
-    metrics_prefix = metrics_prefix.strip("/") if metrics_prefix else ""
+    FIX: antes se asumía que df_completo_cr.csv y model.joblib vivían en el
+    mismo bucket que gcs_bucket (models-artifacts-tfm) bajo el prefijo
+    "preprocess". En realidad:
+      - df_completo_cr.csv  -> bucket "raw-data-tfm"
+      - model.joblib        -> bucket "models-artifacts-tfm", prefijo "models/XGBoost"
+      - metrics.json        -> bucket "models-artifacts-tfm", prefijo "dash" (esto ya funcionaba)
 
+    Verifica con `gsutil ls gs://models-artifacts-tfm/models/XGBoost/` el
+    nombre exacto del fichero de modelo si no es literalmente "model.joblib".
+    """
     expected_files = {
-        "df_completo_cr.csv": default_prefix,
-        "model.joblib": default_prefix,
-        "metrics.json": metrics_prefix,
+        "df_completo_cr.csv": (raw_data_bucket, raw_data_prefix),
+        "model.joblib": (model_bucket, model_prefix),
+        "metrics.json": (metrics_bucket, metrics_prefix),
     }
 
     try:
         client = storage.Client()
-        bucket = client.bucket(bucket_name)
         downloaded = []
+        not_found = []
 
-        for filename, prefix in expected_files.items():
+        for filename, (bucket_name, prefix) in expected_files.items():
             if os.path.exists(filename):
                 continue
 
+            if not bucket_name:
+                print_result("Descarga de Artefactos de Entrada", False,
+                             f"No se especificó bucket para {filename}.")
+                continue
+
+            prefix = prefix.strip("/") if prefix else ""
             blob_path = f"{prefix}/{filename}" if prefix else filename
+
+            bucket = client.bucket(bucket_name)
             blob = bucket.blob(blob_path)
 
             if blob.exists():
                 blob.download_to_filename(filename)
-                downloaded.append(f"{prefix}/{filename}")
+                downloaded.append(f"gs://{bucket_name}/{blob_path}")
+            else:
+                not_found.append(f"gs://{bucket_name}/{blob_path}")
 
         if downloaded:
-            print_result("Descarga de Artefactos de Entrada", True, f"Descargados desde gs://{bucket_name}: {', '.join(downloaded)}")
-        else:
-            print_result("Descarga de Artefactos de Entrada", True, f"No se descargó nada nuevo desde gs://{bucket_name} (archivos ya locales o ausentes).")
+            print_result("Descarga de Artefactos de Entrada", True, f"Descargados: {', '.join(downloaded)}")
+        if not_found:
+            print_result("Descarga de Artefactos de Entrada", False, f"No encontrados: {', '.join(not_found)}")
+        if not downloaded and not not_found:
+            print_result("Descarga de Artefactos de Entrada", True, "No se descargó nada nuevo (archivos ya locales).")
     except Exception as e:
         print_result("Descarga de Artefactos de Entrada", False, f"Error descargando artefactos: {e}")
 
@@ -131,7 +167,7 @@ async def get_dashboard_metrics():
     try:
         # 1. KPIs DEL MODELO CAMPEÓN EN PRODUCCIÓN (XGBoost por defecto)
         query_champion = f"""
-            SELECT run_id, model_name, accuracy, precision, recall, f1_score, roc_auc, 
+            SELECT run_id, model_name, accuracy, precision, recall, f1_score, roc_auc,
                    pipeline_latency, pipeline_error_rate, fecha_registro
             FROM `{DATASET_REF}.t_modelo_campeon_kpis`
             ORDER BY fecha_registro DESC
@@ -142,7 +178,7 @@ async def get_dashboard_metrics():
         except Exception as e:
             print(f"[!] Tabla t_modelo_campeon_kpis no disponible: {e}")
             df_champ = pd.DataFrame()
-        
+
         if df_champ.empty:
             champion_data = {
                 "model_name": "XGBoost",
@@ -183,7 +219,7 @@ async def get_dashboard_metrics():
         except Exception as e:
             print(f"[!] Tabla t_modelo_comparativa no disponible: {e}")
             df_comp = pd.DataFrame()
-        
+
         comparison_list = []
         if df_comp.empty:
             comparison_list = [
@@ -215,23 +251,38 @@ def run_quality_tests():
     print("=" * 60)
     print(" INICIANDO PRUEBAS AUTOMÁTICAS DE CALIDAD DEL MODELO Y DATOS ")
     print("=" * 60)
-    
+
     parser = argparse.ArgumentParser(description="Validador de calidad para Vertex AI / Local")
     parser.add_argument("--gcp-project", type=str, default=None, help="ID del Proyecto de Google Cloud")
     parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP")
-    parser.add_argument("--gcs-bucket", type=str, required=True, help="Nombre del bucket de GCS para guardar los resultados")
+    parser.add_argument("--gcs-bucket", type=str, required=True, help="Bucket de GCS para guardar los resultados y de donde cuelga metrics.json")
     parser.add_argument("--cloud-build-trigger-url", type=str, required=True, help="URL del trigger de Cloud Build")
-    parser.add_argument("--gcs-input-bucket", type=str, default=None, help="Bucket de GCS de entrada.")
-    parser.add_argument("--gcs-input-prefix", type=str, default="preprocess", help="Prefijo para dataset y modelo.")
-    parser.add_argument("--gcs-metrics-prefix", type=str, default="dash", help="Prefijo para metrics.json.")
+
+    # --- Rutas de entrada (FIX: cada artefacto vive en un bucket/prefijo distinto) ---
+    parser.add_argument("--gcs-model-bucket", type=str, default="models-artifacts-tfm",
+                         help="Bucket donde vive el modelo entrenado.")
+    parser.add_argument("--gcs-model-prefix", type=str, default="models/XGBoost",
+                         help="Prefijo del modelo dentro de --gcs-model-bucket.")
+    parser.add_argument("--gcs-raw-data-bucket", type=str, default="raw-data-tfm",
+                         help="Bucket donde vive df_completo_cr.csv.")
+    parser.add_argument("--gcs-raw-data-prefix", type=str, default="",
+                         help="Prefijo del CSV dentro de --gcs-raw-data-bucket (vacío = raíz).")
+    parser.add_argument("--gcs-metrics-prefix", type=str, default="dash",
+                         help="Prefijo de metrics.json dentro de --gcs-bucket.")
     args, unknown = parser.parse_known_args()
 
     results = {}
     all_success = True
     metrics_path = "metrics.json"
 
-    input_bucket = args.gcs_input_bucket or args.gcs_bucket
-    download_input_artifacts(input_bucket, args.gcs_input_prefix, args.gcs_metrics_prefix)
+    download_input_artifacts(
+        model_bucket=args.gcs_model_bucket,
+        model_prefix=args.gcs_model_prefix,
+        raw_data_bucket=args.gcs_raw_data_bucket,
+        raw_data_prefix=args.gcs_raw_data_prefix,
+        metrics_bucket=args.gcs_bucket,
+        metrics_prefix=args.gcs_metrics_prefix,
+    )
 
     # -------------------------------------------------------------
     # TEST 1: Verificar existencia y esquema del Dataset (Estándar Único)
@@ -246,7 +297,7 @@ def run_quality_tests():
             df_sample = pd.read_csv(data_path, sep=';', nrows=100)
             required_cols = ['estado_prestamo', 'importe_solicitado', 'ingresos_anuales']
             missing_cols = [c for c in required_cols if c not in df_sample.columns]
-            
+
             if missing_cols:
                 print_result("Test 1: Esquema de Datos", False, f"Columnas requeridas ausentes: {missing_cols}")
                 results["Test 1"] = f"Fail: Columnas requeridas ausentes: {missing_cols}"
@@ -262,6 +313,7 @@ def run_quality_tests():
     # -------------------------------------------------------------
     # TEST 2: Verificar calidad de métricas del modelo
     # -------------------------------------------------------------
+    metrics = {}
     if not os.path.exists(metrics_path):
         print_result("Test 2: Umbrales de Rendimiento", False, "Archivo metrics.json no encontrado.")
         results["Test 2"] = "Fail: Archivo metrics.json no encontrado."
@@ -270,18 +322,18 @@ def run_quality_tests():
         try:
             with open(metrics_path, "r") as f:
                 metrics = json.load(f)
-            
+
             champ_metrics = metrics["champion"]["metrics"]
             f1 = champ_metrics["f1_score"]
             roc_auc = champ_metrics["roc_auc"]
             recall = champ_metrics["recall"]
 
             MIN_F1, MIN_AUC, MIN_RECALL = 35.0, 65.0, 50.0
-            
+
             f1_ok = f1 >= MIN_F1
             auc_ok = roc_auc >= MIN_AUC
             recall_ok = recall >= MIN_RECALL
-            
+
             if f1_ok and auc_ok and recall_ok:
                 print_result("Test 2: Umbrales de Rendimiento", True, f"F1-score={f1}% (Mín={MIN_F1}%), ROC-AUC={roc_auc}% (Mín={MIN_AUC}%), Recall={recall}% (Mín={MIN_RECALL}%)")
                 results["Test 2"] = "Pass: Umbrales de rendimiento cumplidos."
@@ -301,13 +353,17 @@ def run_quality_tests():
     # -------------------------------------------------------------
     # TEST 3: Verificar límites de Data Drift (PSI < 0.25)
     # -------------------------------------------------------------
+    # NOTA: si esto falla (PSI >= 0.25) no es un bug: el umbral se superó de
+    # verdad y el test está haciendo su trabajo (dispara el retrain en el
+    # bloque final). Es un fallo "esperado" del pipeline de monitorización,
+    # no del código.
     drift_detected = False
-    if os.path.exists(metrics_path):
+    if os.path.exists(metrics_path) and metrics:
         try:
             psi_values = metrics["data_drift"]["psi"]
             features = metrics["data_drift"]["labels"]
             drift_critical = [f"{feat} (PSI={psi})" for feat, psi in zip(features, psi_values) if psi >= 0.25]
-            
+
             if not drift_critical:
                 max_psi = max(psi_values) if psi_values else 0
                 print_result("Test 3: Límites de Data Drift", True, f"Sin drift crítico. PSI máximo: {max_psi}")
@@ -330,10 +386,10 @@ def run_quality_tests():
         from google.cloud import aiplatform
         aiplatform.init(project=args.gcp_project, location=args.gcp_location)
         models = aiplatform.Model.list()
-        
+
         expected_display_name = "Champion_XGBoost_MVP_Balanced"
         matching_models = [m for m in models if m.display_name == expected_display_name]
-        
+
         if matching_models:
             print_result("Test 4: Registro en Vertex AI Model Registry", True, f"Modelo '{expected_display_name}' localizado en Vertex AI.")
             results["Test 4"] = "Pass: Modelo XGBoost localizado en Vertex AI."
@@ -344,8 +400,11 @@ def run_quality_tests():
             all_success = False
             gcp_checked = True
     except Exception as e:
-        pass
-        
+        # FIX: antes este error se tragaba en silencio (except: pass), lo que
+        # ocultaba si el fallo era de permisos/API en vez de "modelo no
+        # encontrado". Ahora se registra explícitamente.
+        print_result("Test 4: Consulta a Vertex AI", False, f"No se pudo consultar Vertex AI Model Registry: {e}")
+
     if not gcp_checked:
         model_file = "model.joblib"
         if os.path.exists(model_file):
@@ -359,7 +418,7 @@ def run_quality_tests():
     # -------------------------------------------------------------
     # TEST 5: Integración de Explicabilidad SHAP
     # -------------------------------------------------------------
-    if os.path.exists(metrics_path):
+    if os.path.exists(metrics_path) and metrics:
         try:
             shap_data = metrics.get("shap", {})
             if not shap_data or "error" in shap_data or "global" not in shap_data or "local" not in shap_data:
@@ -372,11 +431,11 @@ def run_quality_tests():
         except Exception as e:
             print_result("Test 5: Integración de SHAP", False, f"Error: {e}")
             all_success = False
-    
+
     # -------------------------------------------------------------
     # TEST 6: Estructura del Análisis Exploratorio (EDA)
     # -------------------------------------------------------------
-    if os.path.exists(metrics_path):
+    if os.path.exists(metrics_path) and metrics:
         try:
             eda = metrics.get("eda", {})
             required_keys = ["dimensions", "nulls", "target_distribution", "descriptive_stats", "correlation"]

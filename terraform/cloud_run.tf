@@ -97,10 +97,10 @@ resource "google_cloud_run_v2_job" "monitoring_job" {
       containers {
         image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.monitoring_repo.name}/monitoring-app:latest"
 
-        # 1. FORZAMOS EL COMANDO BASE (Ignora el ENTRYPOINT del Dockerfile si estaba corrupto)
+        # 1. FORZAMOS EL COMANDO BASE
         command = ["python"]
         
-        # 2. PASAMOS EL SCRIPT COMO PRIMER ARGUMENTO, SEGUIDO DE SUS FLAGS
+        # 2. PASAMOS EL SCRIPT COMO PRIMER ARGUMENTO
         args = [
           "test_model_quality.py",
           "--gcp-project", var.project_id,
@@ -109,7 +109,6 @@ resource "google_cloud_run_v2_job" "monitoring_job" {
           "--cloud-build-trigger-url", "https://cloudbuild.googleapis.com/v1/projects/${var.project_id}/locations/${var.region}/triggers/evaluar-y-exportar-metricas-modelo:run"
         ]
 
-        # Mantienes tus variables de entorno actuales
         env {
           name  = "GCP_PROJECT"
           value = var.project_id
@@ -123,6 +122,17 @@ resource "google_cloud_run_v2_job" "monitoring_job" {
         env {
           name  = "GCS_BUCKET"
           value = "models-artifacts-tfm"
+        }
+
+        # ==========================================
+        # SOLUCIÓN AL OUT-OF-MEMORY: LIMITES DE RECURSOS
+        # ==========================================
+        resources {
+          limits = {
+            # Subimos la memoria a 4 Gigabytes y le damos 2 vCPUs para mejorar rendimiento
+            memory = "32 Gi"
+            cpu    = "8"
+          }
         }
       }
     }

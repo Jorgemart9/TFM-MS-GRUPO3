@@ -74,7 +74,7 @@ jobs:
       #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest -f dash/Dockerfile dash/
       #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest
 
-      # ==========================================
+      # ================================== ========
       # FASE B: CLOUD RUN UPDATES COMENTADOS
       # ==========================================
       # - name: Update Preprocess Cloud Run Job
@@ -94,17 +94,19 @@ jobs:
       #       --service-account=${{ env.VERTEX_SA }} \
       #       --quiet
       #
-      # - name: Deploy Dashboard Cloud Run Service
-      #   run: |
-      #     echo "[*] Desplegando nueva versión del Dashboard..."
-      #     gcloud run deploy dashboard \
-      #       --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest \
-      #       --region=${{ env.REGION }} \
-      #       --platform=managed \
-      #       --allow-unauthenticated \
-      #       --service-account="sa-dash@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
-      #       --quiet
-      #     echo "[OK] Dashboard actualizado correctamente."
+      - name: Build and Push Dashboard Docker Image
+            run: |
+              gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+              docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest -f dash/Dockerfile dash/
+              docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest
+
+          - name: Deploy Dashboard Cloud Run Service
+            run: |
+              gcloud run deploy dash \
+                --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest \
+                --region=${{ env.REGION }} \
+                --platform=managed \
+                --quiet
 
       # ==========================================
       # FASE C: VERTEX AI COMENTADO

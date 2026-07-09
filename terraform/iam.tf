@@ -92,6 +92,17 @@ resource "google_project_iam_member" "monitoring_storage_creator" {
 
 }
 
+resource "google_project_iam_member" "monitoring_cloudbuild_editor" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.editor"
+  member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
+
+resource "google_project_iam_member" "monitoring_aiplatform_viewer" {
+  project = var.project_id
+  role    = "roles/aiplatform.viewer"
+  member  = "serviceAccount:${google_service_account.sa_monitoring.email}"
+}
 
 # Leer BigQuery
 resource "google_project_iam_member" "monitoring_bq_viewer" {
@@ -204,14 +215,4 @@ resource "google_storage_bucket_iam_member" "sa_cloudbuild_bucket_admin" {
   member = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
 }
 
-resource "google_service_account_iam_member" "allow_gabriel_use_cloudbuild_sa" {
-  service_account_id = google_service_account.sa_cloudbuild_v2.name
-  role               = "roles/iam.serviceAccountUser"
-  member             = "user:gbalagueradell@gmail.com"
-}
 
-resource "google_service_account_iam_member" "allow_gabriel_view_cloudbuild_sa" {
-  service_account_id = google_service_account.sa_cloudbuild_v2.name
-  role               = "roles/iam.serviceAccountViewer"
-  member             = "user:gbalagueradell@gmail.com"
-}
