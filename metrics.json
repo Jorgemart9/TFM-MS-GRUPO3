@@ -80,8 +80,8 @@
     "business": {
         "total_risk": 2500000,
         "avoided_loss": 1615002.035949043,
-        "pipeline_latency": 54,
-        "pipeline_error_rate": 0.02
+        "pipeline_latency": 35,
+        "pipeline_error_rate": 0.06
     },
     "shap": {
         "global": [
