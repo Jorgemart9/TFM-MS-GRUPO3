@@ -46,7 +46,7 @@ def resolve_path(path_value, fallback_local=None, default_object=None):
 
 project_id = args.gcp_project or os.getenv("GCP_PROJECT_ID") or os.getenv("PROJECT_ID")
 bq_dataset = args.bq_dataset or os.getenv("BQ_DATASET", "analytics_warehouse")
-bq_location = args.bq_location or os.getenv("BQ_LOCATION", "europe-southwest1")
+bq_location = args.bq_location or os.getenv("BQ_LOCATION", "europe-west1")
 
 if not project_id:
     raise ValueError("No se ha definido project_id. Usa --gcp-project, GCP_PROJECT_ID o PROJECT_ID.")
@@ -97,6 +97,7 @@ def load_data(src_path):
 
 # -------------------------------------------------------------------
 # FUNCIONES DE ESCRITURA DIRECTA EN BIGQUERY
+# -------------------------------------------------------------------
 def ensure_bq_dataset(client, dataset_id, location):
     dataset_id_full = f"{project_id}.{dataset_id}"
     dataset = bigquery.Dataset(dataset_id_full)
@@ -178,7 +179,11 @@ def preprocess_and_feature_engineering(df_in):
 # EJECUCIÓN DEL PIPELINE DE LIMPIEZA
 # -------------------------------------------------------------------
 print("[*] Iniciando Preprocesamiento de datos...")
-df = load_data(input_path)
+df_raw = load_data(input_path)
+
+# Guardar dimensiones del dataset crudo para el EDA
+total_rows_raw = int(df_raw.shape[0])
+total_cols_raw = int(df_raw.shape[1])
 
 # Definición del target de Basilea III
 target_col = "estado_prestamo"
@@ -187,12 +192,11 @@ clase_1 = ["Incobrable", "Default", "Retraso de 31 a 120 días"]
 
 # Filtrar registros maduros y binarizar target
 print("[*] Aplicando filtros de madurez crediticia y binarización...")
-df_clean = df[df[target_col].isin(clase_0 + clase_1)].copy()
+df_clean = df_raw[df_raw[target_col].isin(clase_0 + clase_1)].copy()
 df_clean["target"] = np.where(df_clean[target_col].isin(clase_1), 1, 0)
 
-# Aplicar transformaciones e ingeniería de características
+# Aplicar transformaciones e ingeniería de características SOLO al dataset limpio
 print("[*] Generando ingeniería de características y normalizaciones...")
-df = preprocess_and_feature_engineering(df)
 df_clean = preprocess_and_feature_engineering(df_clean)
 
 # -------------------------------------------------------------------
@@ -201,31 +205,31 @@ df_clean = preprocess_and_feature_engineering(df_clean)
 print(f"\n[*] Iniciando auditoría analítica EDA (Muestra: {args.sample_fraction * 100}%)...")
 random.seed(42)
 
-# Muestreo para el reporte estadístico
+# Muestreo sobre el dataset crudo para estadísticas generales
 if args.sample_fraction < 1.0:
-    df_sample = df.sample(frac=args.sample_fraction, random_state=42)
+    df_raw_sample = df_raw.sample(frac=args.sample_fraction, random_state=42)
     df_clean_sample = df_clean.sample(frac=min(1.0, args.sample_fraction), random_state=42)
 else:
-    df_sample = df.copy()
+    df_raw_sample = df_raw.copy()
     df_clean_sample = df_clean.copy()
 
-total_rows_sample = int(df_sample.shape[0])
-total_cols = int(df_sample.shape[1])
+total_rows_sample = int(df_raw_sample.shape[0])
+total_cols = int(df_raw_sample.shape[1])
 total_rows_filtered = int(df_clean_sample.shape[0])
 
-# Conteo de nulos en muestra
-null_counts = df_sample.isnull().sum()
+# Conteo de nulos en muestra cruda
+null_counts = df_raw_sample.isnull().sum()
 null_percentages = (null_counts / total_rows_sample) * 100
 
 null_summary = {}
-for col in df_sample.columns:
+for col in df_raw_sample.columns:
     null_summary[col] = {
         "nulos": int(null_counts[col]),
         "porcentaje": round(float(null_percentages[col]), 2),
     }
 
-# Distribución del target
-estado_prestamo_dist = df_sample[target_col].value_counts(dropna=False)
+# Distribución del target (sobre datos crudos)
+estado_prestamo_dist = df_raw_sample[target_col].value_counts(dropna=False)
 estado_prestamo_summary = [
     {
         "label": str(k),
@@ -235,6 +239,7 @@ estado_prestamo_summary = [
     for k, v in estado_prestamo_dist.items()
 ]
 
+# Distribución del target binarizado (sobre datos limpios)
 target_dist = df_clean_sample["target"].value_counts()
 target_summary = [
     {
@@ -249,7 +254,7 @@ target_summary = [
     },
 ]
 
-# Variables numéricas descriptivas
+# Variables numéricas descriptivas (sobre datos limpios con feature engineering)
 features_numericas = [
     "importe_solicitado",
     "ingresos_anuales",
@@ -287,8 +292,8 @@ for col in features_numericas:
 # Distribución categórica
 categorical_summary = {}
 for col in ["grado_riesgo", "finalidad_prestamo"]:
-    if col in df_sample.columns:
-        dist = df_sample[col].value_counts(dropna=False)
+    if col in df_raw_sample.columns:
+        dist = df_raw_sample[col].value_counts(dropna=False)
         categorical_summary[col] = [
             {
                 "label": str(k),
@@ -316,7 +321,7 @@ if not df_num.empty:
 # 1. eda_dimensions
 df_dimensions = pd.DataFrame([
     {
-        "total_rows_raw_est": int(df.shape[0]),
+        "total_rows_raw_est": total_rows_raw,
         "sample_rows": total_rows_sample,
         "total_columns": total_cols,
         "filtered_rows": int(df_clean.shape[0]),
@@ -405,15 +410,14 @@ for table_name, df_table in tables_to_load.items():
     load_dataframe_to_bq(client=bq_client, df_to_load=df_table, table_name=table_name)
 
 # -------------------------------------------------------------------
-# GUARDAR RESULTADOS EN GCS
+# GUARDAR RESULTADOS EDA EN GCS (solo estadísticas, no datos)
 # -------------------------------------------------------------------
-bucket_name = "models-artifacts-tfm"  # Nombre del bucket
-folder = "preprocess"  # Carpeta deseada dentro del bucket
-file_name = "eda_results.json"  # Nombre del archivo JSON
+bucket_name = "models-artifacts-tfm"
+folder = "preprocess"
+file_name = "eda_results.json"
 
-# Crear un diccionario para almacenar todos los resultados
-results = {
-    "df_completo_cr_clean_v2": df_clean.to_dict(orient="records"),
+# Solo estadísticas del EDA, NO el dataset completo
+eda_results = {
     "eda_dimensions": df_dimensions.to_dict(orient="records"),
     "eda_nulls": df_nulls.to_dict(orient="records"),
     "eda_estado_prestamo_distribution": df_estado_prestamo.to_dict(orient="records"),
@@ -423,6 +427,6 @@ results = {
     "eda_correlation": df_correlation.to_dict(orient="records"),
 }
 
-save_results_to_gcs(results, bucket_name, folder, file_name)
+save_results_to_gcs(eda_results, bucket_name, folder, file_name)
 
-print("[*] Todas las tablas han sido cargadas directamente en BigQuery y los resultados han sido guardados en GCS como eda_results.json.")
+print("[*] Todas las tablas han sido cargadas directamente en BigQuery y los resultados EDA han sido guardados en GCS.")

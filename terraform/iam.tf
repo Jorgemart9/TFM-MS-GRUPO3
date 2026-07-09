@@ -157,13 +157,11 @@ resource "google_storage_bucket_iam_member" "vertex_storage_admin" {
 
 # CLOUD BUILD 
 
-# Permiso para que Cloud Build pueda subir (push) imágenes a "training-repo"
-resource "google_artifact_registry_repository_iam_member" "cb_writer" {
-  project    = var.project_id
-  location   = google_artifact_registry_repository.training_repo.location
-  repository = google_artifact_registry_repository.training_repo.name
-  role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
+# Permiso para que Cloud Build pueda subir (push) imágenes a todos los repositorios
+resource "google_project_iam_member" "cb_artifact_registry" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.sa_cloudbuild_v2.email}"
 }
 
 # Permisos en BigQuery: Escribir métricas/drift (gubernatura_modelos) y leer datos de entrenamiento (analytics_warehouse)

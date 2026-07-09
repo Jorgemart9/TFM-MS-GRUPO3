@@ -1,6 +1,6 @@
 import os
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from google.cloud import bigquery
 from google.cloud import storage
@@ -18,6 +18,7 @@ app = FastAPI(
 # -------------------------------------------------------------------
 PROJECT_ID = os.getenv("GCP_PROJECT", "tfm-ms-3")
 DATASET_REF = f"{PROJECT_ID}.gubernatura_modelos"
+EDA_DATASET_REF = f"{PROJECT_ID}.analytics_warehouse"
 BUCKET_NAME = os.getenv("GCS_BUCKET", "models-artifacts-tfm")
 SHAP_GCS_PATH = "dash/shap_results.json"
 
@@ -233,7 +234,7 @@ async def get_dashboard_metrics():
         # ===============================================================
         # 5.1 Dimensiones
         try:
-            df_dim = bq_client.query(f"SELECT * FROM `{DATASET_REF}.t_eda_dimensiones` ORDER BY fecha_analisis DESC LIMIT 1").to_dataframe()
+            df_dim = bq_client.query(f"SELECT * FROM `{EDA_DATASET_REF}.eda_dimensions` LIMIT 1").to_dataframe()
         except Exception:
             df_dim = pd.DataFrame()
         dim_dict = {
@@ -245,7 +246,7 @@ async def get_dashboard_metrics():
 
         # 5.2 Calidad nulos
         try:
-            df_nulos = bq_client.query(f"SELECT campo, nulos, porcentaje FROM `{DATASET_REF}.t_eda_calidad_nulos`").to_dataframe()
+            df_nulos = bq_client.query(f"SELECT campo, nulos, porcentaje FROM `{EDA_DATASET_REF}.eda_nulls`").to_dataframe()
         except Exception:
             df_nulos = pd.DataFrame()
         nulos_dict = {}
@@ -261,7 +262,7 @@ async def get_dashboard_metrics():
 
         # 5.3 Target distribution
         try:
-            df_t_dist = bq_client.query(f"SELECT label, count, percentage FROM `{DATASET_REF}.t_eda_distribucion_target`").to_dataframe()
+            df_t_dist = bq_client.query(f"SELECT label, count, percentage FROM `{EDA_DATASET_REF}.eda_target_distribution`").to_dataframe()
         except Exception:
             df_t_dist = pd.DataFrame()
         t_dist_list = []
@@ -280,7 +281,7 @@ async def get_dashboard_metrics():
 
         # 5.4 Métricas descriptivas
         try:
-            df_desc = bq_client.query(f"SELECT variable, count, mean, std, min, median, max FROM `{DATASET_REF}.t_eda_metricas_descriptivas`").to_dataframe()
+            df_desc = bq_client.query(f"SELECT variable, count, mean, std, min, median, max FROM `{EDA_DATASET_REF}.eda_descriptive_stats`").to_dataframe()
         except Exception:
             df_desc = pd.DataFrame()
         desc_dict = {}
@@ -301,7 +302,7 @@ async def get_dashboard_metrics():
 
         # 5.5 Matriz de correlación
         try:
-            df_corr = bq_client.query(f"SELECT variable_x, variable_y, correlation FROM `{DATASET_REF}.t_eda_correlacion`").to_dataframe()
+            df_corr = bq_client.query(f"SELECT variable_x, variable_y, correlation FROM `{EDA_DATASET_REF}.eda_correlation`").to_dataframe()
         except Exception:
             df_corr = pd.DataFrame()
         corr_payload = {"columns": [], "matrix": []}
@@ -398,7 +399,10 @@ async def get_dashboard_metrics():
         return JSONResponse(content=final_payload)
         
     except Exception as e:
-   @app.post("/quality-results")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/quality-results")
 async def receive_quality_results(request: Request):
     try:
         payload = await request.json()
@@ -419,7 +423,6 @@ async def receive_quality_results(request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 

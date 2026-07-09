@@ -14,15 +14,15 @@ resource "google_storage_bucket" "input_bucket" {
 }
 
 # SUBE CSV SUCIO
-resource "google_storage_bucket_object" "raw_data_csv" {
-  name   = "df_completo_cr.csv"                 # Nombre real que espera tu Cloud Run
-  bucket = google_storage_bucket.input_bucket.name # <--- BUCKET SUCIO (Input)
-  source = "${path.module}/../data/df_completo_cr.csv"
-
-  depends_on = [
-    google_storage_bucket.input_bucket
-  ]
-}
+# resource "google_storage_bucket_object" "raw_data_csv" {
+#   name   = "df_completo_cr.csv"                 # Nombre real que espera tu Cloud Run
+#   bucket = google_storage_bucket.input_bucket.name # <--- BUCKET SUCIO (Input)
+#   source = "${path.module}/../data/df_completo_cr.csv"
+# 
+#   depends_on = [
+#     google_storage_bucket.input_bucket
+#   ]
+# }
 
 # BUCKET VERTEX AI
 resource "google_storage_bucket" "models_bucket" {

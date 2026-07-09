@@ -113,7 +113,9 @@ def trigger_cloud_build(trigger_name_or_url, project_id, location):
         # 2. Ejecutar la llamada POST
         trigger_url = f"https://cloudbuild.googleapis.com/v1/projects/{project_id}/locations/{location}/triggers/{trigger_id}:run"
         payload = {
-            "branchName": "main"
+            "source": {
+                "branchName": "main"
+            }
         }
         
         logging.info(f"[*] Ejecutando POST a {trigger_url} con payload: {payload}")
@@ -161,9 +163,8 @@ def download_input_artifacts(model_bucket, model_prefix, raw_data_bucket, raw_da
         except Exception as e:
             logging.warning(f"[!] Error leyendo metrics.json para resolver prefijo del modelo: {e}. Fallback a: {model_prefix}")
 
-    # 3. Descargar el resto de archivos requeridos (CSV y modelo)
+    # 3. Descargar el modelo (el CSV ya no se necesita, se valida contra BigQuery)
     expected_files = {
-        "df_completo_cr.csv": (raw_data_bucket, raw_data_prefix),
         "model.joblib": (model_bucket, resolved_model_prefix),
     }
 
@@ -244,30 +245,35 @@ def run_quality_tests():
     )
 
     # -------------------------------------------------------------
-    # TEST 1: Verificar existencia y esquema del Dataset (Estándar Único)
+    # TEST 1: Verificar existencia y esquema del Dataset Limpio en BigQuery
     # -------------------------------------------------------------
-    data_path = "df_completo_cr.csv"
-    if not os.path.exists(data_path):
-        print_result("Test 1: Existencia de Dataset", False, "No se encontró el archivo df_completo_cr.csv.")
-        results["Test 1"] = "Fail: No se encontró df_completo_cr.csv."
-        all_success = False
-    else:
-        try:
-            df_sample = pd.read_csv(data_path, sep=';', nrows=100)
-            required_cols = ['estado_prestamo', 'importe_solicitado', 'ingresos_anuales']
+    bq_clean_table = f"{PROJECT_ID}.analytics_warehouse.df_completo_cr_clean_v2"
+    try:
+        if bq_client:
+            query = f"SELECT * FROM `{bq_clean_table}` LIMIT 10"
+            df_sample = bq_client.query(query).to_dataframe()
+            required_cols = ['target', 'importe_solicitado', 'ingresos_anuales']
             missing_cols = [c for c in required_cols if c not in df_sample.columns]
 
             if missing_cols:
-                print_result("Test 1: Esquema de Datos", False, f"Columnas requeridas ausentes: {missing_cols}")
+                print_result("Test 1: Esquema de Datos", False, f"Columnas requeridas ausentes en BQ: {missing_cols}")
                 results["Test 1"] = f"Fail: Columnas requeridas ausentes: {missing_cols}"
                 all_success = False
+            elif df_sample.empty:
+                print_result("Test 1: Esquema de Datos", False, f"Tabla {bq_clean_table} está vacía.")
+                results["Test 1"] = f"Fail: Tabla vacía."
+                all_success = False
             else:
-                print_result("Test 1: Esquema de Datos", True, f"Dataset válido. {len(df_sample.columns)} columnas verificadas.")
-                results["Test 1"] = "Pass: Dataset válido."
-        except Exception as e:
-            print_result("Test 1: Esquema de Datos", False, f"Error leyendo dataset: {e}")
-            results["Test 1"] = f"Fail: Error leyendo dataset: {e}"
+                print_result("Test 1: Esquema de Datos", True, f"Dataset limpio válido en BigQuery. {len(df_sample.columns)} columnas verificadas.")
+                results["Test 1"] = "Pass: Dataset limpio válido en BigQuery."
+        else:
+            print_result("Test 1: Esquema de Datos", False, "BigQuery client no disponible.")
+            results["Test 1"] = "Fail: BigQuery client no disponible."
             all_success = False
+    except Exception as e:
+        print_result("Test 1: Esquema de Datos", False, f"Error consultando BigQuery: {e}")
+        results["Test 1"] = f"Fail: Error consultando BigQuery: {e}"
+        all_success = False
 
     # -------------------------------------------------------------
     # TEST 2: Verificar calidad de métricas del modelo

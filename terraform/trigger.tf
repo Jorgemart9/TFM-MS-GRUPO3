@@ -7,7 +7,7 @@ resource "google_cloudbuild_trigger" "model_evaluation_trigger" {
   service_account = google_service_account.sa_cloudbuild.id
 
   source_to_build {
-    uri       = "https://github.com/tu-usuario-o-organizacion/TFM-MS-GRUPO3" # Reemplaza con la URL real de tu repo
+    uri       = "https://github.com/Jorgemart9/TFM-MS-GRUPO3" # Reemplaza con la URL real de tu repo
     ref       = "refs/heads/main"
     repo_type = "GITHUB"
   }
@@ -33,7 +33,7 @@ resource "google_cloudbuild_trigger" "model_test_trigger" {
   depends_on = [google_artifact_registry_repository.training_repo]
 
   source_to_build {
-    uri       = "https://github.com/tu-usuario-o-organizacion/TFM-MS-GRUPO3"
+    uri       = "https://github.com/Jorgemart9/TFM-MS-GRUPO3"
     ref       = "refs/heads/main"
     repo_type = "GITHUB"
   }
@@ -60,7 +60,7 @@ resource "google_cloudbuild_trigger" "model_training_trigger" {
   service_account = google_service_account.sa_cloudbuild_v2.id
 
   source_to_build {
-    uri       = "https://github.com/tu-usuario-o-organizacion/TFM-MS-GRUPO3"
+    uri       = "https://github.com/Jorgemart9/TFM-MS-GRUPO3"
     ref       = "refs/heads/main"
     repo_type = "GITHUB"
   }

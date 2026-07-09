@@ -31,24 +31,8 @@ resource "google_cloud_run_v2_job" "preprocess_job" {
           value = var.region
         }
         env {
-          name  = "INPUT_BUCKET"
-          value = "raw-data-tfm" 
-        }
-        env {
-          name  = "OUTPUT_BUCKET"
-          value = "clean-data-tfm" 
-        }
-        env {
           name  = "INPUT_PATH"
           value = "gs://raw-data-tfm/df_completo_cr.csv"
-        }
-        env {
-          name  = "OUTPUT_CLEAN_PATH"
-          value = "gs://clean-data-tfm/df_completo_cr_clean.csv"
-        }
-        env {
-          name  = "OUTPUT_EDA_PATH"
-          value = "gs://clean-data-tfm/eda_results.json"
         }
         env {
           name  = "PROJECT_ID"
