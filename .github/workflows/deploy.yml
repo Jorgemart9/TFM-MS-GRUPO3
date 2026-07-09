@@ -68,14 +68,30 @@ jobs:
       #   run: |
       #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest -f monitoring/Dockerfile monitoring/
       #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/monitoring-repo/test_model_quality:latest
-      #
-      # - name: Build and Push Export dashboard Docker Image
-      #   run: |
-      #     docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest -f dash/Dockerfile dash/
-      #     docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/app:latest
 
-      # ================================== ========
-      # FASE B: CLOUD RUN UPDATES COMENTADOS
+      # ==========================================
+      # FASE B: DESPLIEGUE DEL DASHBOARD (ACTIVA)
+      # ==========================================
+      - name: Configure Docker Auth for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and Push Dashboard Docker Image
+        run: |
+          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest -f dash/Dockerfile dash/
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest
+
+      - name: Deploy Dashboard Cloud Run Service
+        run: |
+          gcloud run deploy dash \
+            --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --quiet
+          echo "[OK] Dashboard actualizado correctamente."
+
+      # ==========================================
+      # OTROS CLOUD RUN UPDATES (COMENTADOS)
       # ==========================================
       # - name: Update Preprocess Cloud Run Job
       #   run: |
@@ -93,20 +109,6 @@ jobs:
       #       --region=europe-west1 \
       #       --service-account=${{ env.VERTEX_SA }} \
       #       --quiet
-      #
-      - name: Build and Push Dashboard Docker Image
-            run: |
-              gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-              docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest -f dash/Dockerfile dash/
-              docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest
-
-          - name: Deploy Dashboard Cloud Run Service
-            run: |
-              gcloud run deploy dash \
-                --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/dash-repo/dash-app:latest \
-                --region=${{ env.REGION }} \
-                --platform=managed \
-                --quiet
 
       # ==========================================
       # FASE C: VERTEX AI COMENTADO
@@ -128,10 +130,7 @@ jobs:
             --service-account="${{ env.VERTEX_SA }}" \
             --set-env-vars="PROJECT_ID=${{ env.PROJECT_ID }},LOCATION=${{ env.REGION }},GCS_BUCKET=${{ env.GCS_BUCKET }},BQ_DATASET_DASH=${{ env.BQ_DATASET_DASH }},BQ_DATASET_RAW=${{ env.BQ_DATASET_RAW }}" \
             --quiet
-          
+
           gcloud run jobs execute export-metrics --region="${{ env.REGION }}" --wait
 
-      - name: Trigger Cloud Run Job for Quality Tests
-        run: |
-          echo "[*] Ejecutando el Cloud Run Job existente de Tests de Calidad y Drift..."
-          gcloud run jobs execute test-model-quality --region="${{ env.REGION }}" --wait
+   
