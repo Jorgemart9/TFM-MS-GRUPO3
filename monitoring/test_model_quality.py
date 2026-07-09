@@ -39,6 +39,7 @@ def save_results_to_gcs(bucket_name, result_data):
 def trigger_dashboard(results, gcp_project, gcs_bucket):
     """Envía los resultados al dashboard."""
     DASHBOARD_URL = "https://dash-1076362823794.europe-west1.run.app"
+
     payload = {
         "results": results,
         "gcp_project": gcp_project,
@@ -46,14 +47,32 @@ def trigger_dashboard(results, gcp_project, gcs_bucket):
     }
 
     try:
-        options = httpx.Client(verify=False) # Añadido por si el entorno requiere ignorar SSL temporalmente
-        response = httpx.post(DASHBOARD_URL, json=payload)
+        response = httpx.post(
+            DASHBOARD_URL,
+            json=payload,
+            verify=False,
+            timeout=30.0
+        )
+
         if response.status_code == 200:
-            print_result("Conexión al Dashboard", True, "Resultados enviados correctamente al dashboard.")
+            print_result(
+                "Conexión al Dashboard",
+                True,
+                "Resultados enviados correctamente."
+            )
         else:
-            print_result("Conexión al Dashboard", False, f"Error al enviar resultados: {response.status_code} - {response.text}")
+            print_result(
+                "Conexión al Dashboard",
+                False,
+                f"{response.status_code} - {response.text}"
+            )
+
     except Exception as e:
-        print_result("Conexión al Dashboard", False, f"Error al conectar: {e}")
+        print_result(
+            "Conexión al Dashboard",
+            False,
+            str(e)
+        )
 
 def trigger_cloud_build(trigger_url):
     """Dispara el trigger de Cloud Build."""
@@ -65,6 +84,56 @@ def trigger_cloud_build(trigger_url):
             print_result("Trigger de Cloud Build", False, f"Error al disparar el trigger: {response.status_code} - {response.text}")
     except Exception as e:
         print_result("Trigger de Cloud Build", False, f"Error al conectar: {e}")
+
+def download_input_artifacts(bucket_name, prefix):
+    """
+    Descarga a disco local los ficheros de entrada necesarios (dataset, metrics.json,
+    model.joblib) desde gs://bucket_name/prefix/, si existen y aún no están presentes
+    localmente. No falla el script si algún fichero no existe: cada Test ya maneja
+    su propia ausencia.
+    """
+    if not bucket_name:
+        print_result("Descarga de Artefactos de Entrada", False, "No se especificó --gcs-input-bucket; se usará solo el sistema de ficheros local.")
+        return
+
+    prefix = prefix.strip("/")
+    expected_files = [
+        "df_completo_cr.csv",
+        "df_completo_cr_mini.csv",
+        "metrics.json",
+        "model.joblib",
+    ]
+
+    try:
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        downloaded = []
+
+        for filename in expected_files:
+            if os.path.exists(filename):
+                continue  # ya está en local, no lo pisamos
+
+            blob_path = f"{prefix}/{filename}" if prefix else filename
+            blob = bucket.blob(blob_path)
+
+            if blob.exists():
+                blob.download_to_filename(filename)
+                downloaded.append(filename)
+
+        if downloaded:
+            print_result(
+                "Descarga de Artefactos de Entrada",
+                True,
+                f"Descargados desde gs://{bucket_name}/{prefix}/: {', '.join(downloaded)}"
+            )
+        else:
+            print_result(
+                "Descarga de Artefactos de Entrada",
+                True,
+                f"No se descargó nada nuevo desde gs://{bucket_name}/{prefix}/ (ya presentes en local o no encontrados)."
+            )
+    except Exception as e:
+        print_result("Descarga de Artefactos de Entrada", False, f"Error descargando artefactos: {e}")
 
 def run_quality_tests():
     setup_logger()  # Configurar el logger
@@ -78,12 +147,20 @@ def run_quality_tests():
     parser.add_argument("--gcp-location", type=str, default="europe-west1", help="Región de GCP (por ejemplo, europe-west1)")
     parser.add_argument("--gcs-bucket", type=str, required=True, help="Nombre del bucket de GCS para guardar los resultados")
     parser.add_argument("--cloud-build-trigger-url", type=str, required=True, help="URL del trigger de Cloud Build para reentrenar el modelo")
+    parser.add_argument("--gcs-input-bucket", type=str, default=None, help="Bucket de GCS donde están los ficheros de entrada (dataset, metrics.json, model.joblib). Si no se indica, se usa --gcs-bucket.")
+    parser.add_argument("--gcs-input-prefix", type=str, default="preprocess", help="Carpeta/prefijo dentro del bucket de entrada donde están los ficheros (por defecto: 'preprocess')")
     args, unknown = parser.parse_known_args()
 
     results = {}
     all_success = True
     metrics_path = "metrics.json"
-    
+
+    # -------------------------------------------------------------
+    # PASO 0: Descargar artefactos de entrada desde GCS (si no están ya en local)
+    # -------------------------------------------------------------
+    input_bucket = args.gcs_input_bucket or args.gcs_bucket
+    download_input_artifacts(input_bucket, args.gcs_input_prefix)
+
     # -------------------------------------------------------------
     # TEST 1: Verificar existencia y esquema del Dataset
     # -------------------------------------------------------------
@@ -108,11 +185,10 @@ def run_quality_tests():
             else:
                 print_result("Test 1: Esquema de Datos", True, f"Dataset válido ({os.path.basename(data_path)}). {len(df_sample.columns)} columnas verificadas.")
                 results["Test 1"] = "Pass: Dataset válido."
-            except Exception as e:
-                print_result("Test 1: Esquema de Datos", False, f"Error leyendo dataset: {e}")
-                results["Test 1"] = f"Fail: Error leyendo dataset: {e}"
-                all_success = False
-
+        except Exception as e:
+            print_result("Test 1: Esquema de Datos", False, f"Error leyendo dataset: {e}")
+            results["Test 1"] = f"Fail: Error leyendo dataset: {e}"
+            all_success = False
     # -------------------------------------------------------------
     # TEST 2: Verificar calidad de métricas del modelo (F1, AUC, Recall)
     # -------------------------------------------------------------

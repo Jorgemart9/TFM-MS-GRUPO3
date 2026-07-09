@@ -87,10 +87,11 @@ jobs:
 
     - name: Actualizando Cloud Run Job para Monitoreo de Calidad
       run: |
-        echo "[*] Desplegando/Actualizando Cloud Run Job para Monitoreo de Calidad..."
+        echo "[*] Desplegando Cloud Run Job para Monitoreo de Calidad..."
         gcloud run jobs deploy test-model-quality \
           --image=europe-west1-docker.pkg.dev/tfm-ms-3/monitoring-repo/test_model_quality:latest \
           --region=europe-west1 \
+          --service-account=${{ env.VERTEX_SA }} \
           --quiet
 
     - name: Deploy Dashboard Cloud Run Service
