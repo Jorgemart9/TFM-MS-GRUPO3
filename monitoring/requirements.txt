@@ -7,3 +7,5 @@ google-cloud-storage
 httpx
 fastapi
 uvicorn
+google-cloud-bigquery
+db-dtypes

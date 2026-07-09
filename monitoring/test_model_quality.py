@@ -431,7 +431,8 @@ def run_quality_tests():
         try:
             eda = metrics.get("eda", {})
             required_keys = ["dimensions", "nulls", "target_distribution", "descriptive_stats", "correlation"]
-            if all(k in eda for k in required_keys):
+            required_keys_prefixed = ["eda_dimensions", "eda_nulls", "eda_target_distribution", "eda_descriptive_stats", "eda_correlation"]
+            if all(k in eda for k in required_keys) or all(k in eda for k in required_keys_prefixed):
                 print_result("Test 6: Estructura de EDA", True, "Estructura analítica de EDA validada.")
                 results["Test 6"] = "Pass: Estructura de EDA validada."
             else:
