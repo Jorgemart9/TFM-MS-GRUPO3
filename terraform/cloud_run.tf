@@ -86,7 +86,6 @@ resource "google_cloud_run_v2_service" "dash_service" {
 
 
 # SERVICIO MONITOREO
-# SERVICIO MONITOREO
 resource "google_cloud_run_v2_job" "monitoring_job" {
   name     = "monitoring"
   location = var.region
